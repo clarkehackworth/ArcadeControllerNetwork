@@ -1,3 +1,4 @@
+#include "core_pins.h"
 #include "Logger.h"
 #include "ControllerObj.h"
 #include "I2CNetwork.h"
@@ -39,6 +40,10 @@ void ControllerObject::initialize(){
   
 }
 
+void ControllerObject::deinitialize(){
+  
+}
+
 bool ControllerObject::isDigital(){
   return false;
 }
@@ -53,3 +58,48 @@ int ControllerObject::getGroup(){
 void ControllerObject::count(int count){
   
 }
+
+template <unsigned NumISR>
+auto ControllerObject::get_isr(unsigned interrupt) -> isr_func_t {
+    return interrupt == NumISR - 1
+               ? []() IC_ISR_ATTR { instance_table[NumISR - 1]->interrupt(); }
+               : get_isr<NumISR - 1>(interrupt); // Compile-time tail recursion
+}
+
+template <>
+inline auto ControllerObject::get_isr<0>(unsigned) -> isr_func_t {
+    return nullptr;
+}
+
+void ControllerObject::attachInterruptCtx(int interrupt) {
+    //_logger->debug("ControllerObj: attaching ctx on pin "+String(interrupt));
+    if (attached) {
+        _logger->log(F("Error: This instance was attached already"));
+        return;
+    }
+    if (interrupt == NOT_AN_INTERRUPT) {
+        _logger->log(F("Error: Not an interrupt-capable pin"));
+        return;
+    }
+    if (instance_table[interrupt] != nullptr) {
+        _logger->log(F("Error: Multiple instances on the same pin"));
+        return;
+    }
+    instance_table[interrupt] = this;
+    attached = true;
+    attachInterrupt(interrupt, get_isr(interrupt), CHANGE);
+    //_logger->debug("ControllerObj: attaching ctx on pin "+String(interrupt)+" "+String(attached));
+}
+
+void ControllerObject::detachInterruptCtx(int interrupt) {
+  //_logger->debug("ControllerObj: detaching ctx on pin "+String(interrupt));
+  detachInterrupt(interrupt);
+  attached = false;
+  instance_table[interrupt] = nullptr;
+}
+
+void ControllerObject::interrupt(){
+  return;
+}
+
+ControllerObject *ControllerObject::instance_table[] {};

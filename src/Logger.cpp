@@ -5,7 +5,7 @@ Logger::Logger(){
 }
 
 void Logger::setup() {
-
+  Serial.begin(9600);
   if (!SD.begin(chipSelect)) {
     Serial.println("SD Card failed, or not present");
     return;

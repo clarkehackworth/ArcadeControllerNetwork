@@ -130,22 +130,26 @@ String Config::setup(Logger* logger, Controllers* controllers, I2CNetwork* i2c) 
         int index = jsoncontrol["index"].as<int>();
         int emulateAnalog = jsoncontrol["emulateAnalog"].as<int>();
         
-        if(type == "button"){
-          JsonVariant jsonxboxButton = jsoncontrol["xboxButton"];
-          JsonVariant jsonxboxButtonDoubleTap = jsoncontrol["xboxButtonDoubleTap"];
+        if(type == "button" || type == "buttonKeyboard"){
+          JsonVariant jsonxboxButton = jsoncontrol["buttonRef"];
+          JsonVariant jsonxboxButtonDoubleTap = jsoncontrol["buttonRefDoubleTap"];
           bool isString = true;
           int xboxButtonsSize = -1;
           int xboxButtonsDoubleTapSize = -1;
           String* buttons;
           String* buttonsDoubleTap;
+          int doubleTapTime = -1;
+          
+          if(jsoncontrol.containsKey("doubleTapTime"))
+            doubleTapTime = jsoncontrol["doubleTapTime"].as<int>();
           if(!jsonxboxButton.isNull() && jsonxboxButton.nesting()==0){ //String
             buttons = new String[1];
-            buttons[0]=jsoncontrol["xboxButton"].as<String>();
+            buttons[0]=jsoncontrol["buttonRef"].as<String>();
             xboxButtonsSize=1;
           }else if(!jsonxboxButton.isNull() && jsonxboxButton.nesting()==1){ //array
             buttons = new String[jsonxboxButton.size()];
             int i=0;
-            for (JsonVariant jsonbutton : jsoncontrol["xboxButton"].as<JsonArray>()) {
+            for (JsonVariant jsonbutton : jsoncontrol["buttonRef"].as<JsonArray>()) {
               buttons[i]=jsonbutton.as<String>();
               i++;
             }
@@ -153,12 +157,12 @@ String Config::setup(Logger* logger, Controllers* controllers, I2CNetwork* i2c) 
           }
           if(!jsonxboxButtonDoubleTap.isNull() && jsonxboxButtonDoubleTap.nesting()==0){ //String
             buttonsDoubleTap = new String[1];
-            buttonsDoubleTap[0]=jsoncontrol["xboxButtonDoubleTap"].as<String>();
+            buttonsDoubleTap[0]=jsoncontrol["buttonRefDoubleTap"].as<String>();
             xboxButtonsDoubleTapSize=1;
           }else if(!jsonxboxButtonDoubleTap.isNull() && jsonxboxButtonDoubleTap.nesting()==1){ //array
             buttonsDoubleTap = new String[jsonxboxButtonDoubleTap.size()];
             int i=0;
-            for (JsonVariant jsonbutton : jsoncontrol["xboxButtonDoubleTap"].as<JsonArray>()) {
+            for (JsonVariant jsonbutton : jsoncontrol["buttonRefDoubleTap"].as<JsonArray>()) {
               buttonsDoubleTap[i]=jsonbutton.as<String>();
               i++;
             }
@@ -167,17 +171,17 @@ String Config::setup(Logger* logger, Controllers* controllers, I2CNetwork* i2c) 
           //String xboxButton = jsoncontrol["xboxButton"].as<String>();
           
           if(xboxButtonsSize>=0 && remoteAddress!="null"){
-            logger->log("Error: "+name+" has xboxButton and remoteAddress. Cannot have both, either choose xbox or remote.");
+            logger->log("Error: "+name+" has buttonRef and remoteAddress. Cannot have both, either choose button or remote.");
             continue;
           }
           
           if(xboxButtonsSize>=0 && pin>0){
             //logger->debug("add controller std "+String(name) +"-"+String(pin)+"-"+String(xboxButtonsSize));
-            controllers->addControllerDigital(name,pin,buttons,xboxButtonsSize,buttonsDoubleTap,xboxButtonsDoubleTapSize); 
+            controllers->addControllerDigital(name,type,pin,buttons,xboxButtonsSize,buttonsDoubleTap,xboxButtonsDoubleTapSize,doubleTapTime); 
             
           }else if(xboxButtonsSize>=0 && pin==0){
             //logger->debug("add controller xboxbutton "+String(name) +"-"+String(xboxButtonsSize));
-            controllers->addControllerDigital(name,buttons,xboxButtonsSize,buttonsDoubleTap,xboxButtonsDoubleTapSize); 
+            controllers->addControllerDigital(name,type,buttons,xboxButtonsSize,buttonsDoubleTap,xboxButtonsDoubleTapSize); 
             
           }else if((remoteAddress!="null" || emulateAnalog!=0) && pin>0){
             String digital_remoteAddress = String(remoteAddress);
@@ -185,24 +189,28 @@ String Config::setup(Logger* logger, Controllers* controllers, I2CNetwork* i2c) 
               digital_remoteAddress=String(networkName);
             
             //logger->debug("add controller remote pin "+String(name) +"-"+String(pin)+"-"+String(remoteAddress)+"-"+String(index)+"-"+String(emulateAnalog));
-            controllers->addControllerDigital(name,pin,digital_remoteAddress,index,emulateAnalog,i2c);
+            controllers->addControllerDigital(name,type,pin,digital_remoteAddress,index,emulateAnalog,doubleTapTime,i2c);
               
             
             
           }
         }
-        if(type == "joystick" || type == "trigger"){
+        if(type == "joystick" || type == "trigger" || type == "mouse"){
           String xboxref = "";
           String axis = "";
+          int pin2 = -1;
+          
+          if(jsoncontrol.containsKey("pin2"))
+            pin2 = jsoncontrol["pin2"].as<int>();
           if(type == "joystick"){
-            if(jsoncontrol.containsKey("xboxJoystick"))
-              xboxref = jsoncontrol["xboxJoystick"].as<String>();
+            if(jsoncontrol.containsKey("joystickRef"))
+              xboxref = jsoncontrol["joystickRef"].as<String>();
             if(jsoncontrol.containsKey("axis"))
               axis = jsoncontrol["axis"].as<String>();
           }
           if(type == "trigger")
-            if(jsoncontrol.containsKey("xboxTrigger"))
-              xboxref = jsoncontrol["xboxTrigger"].as<String>();
+            if(jsoncontrol.containsKey("triggerRef"))
+              xboxref = jsoncontrol["triggerRef"].as<String>();
           
           int sensitivity = jsoncontrol["sensitivity"].as<int>();
           if(!jsoncontrol.containsKey("sensitivity"))
@@ -237,8 +245,21 @@ String Config::setup(Logger* logger, Controllers* controllers, I2CNetwork* i2c) 
           if(jsoncontrol.containsKey("index-"))
             indexMinus = jsoncontrol["index-"].as<int>();
 
-          String xboxButton = jsoncontrol["xboxButton"].as<String>();
+          String xboxButton = jsoncontrol["buttonRef"].as<String>();
+
+          int rotarySpeed = -1;
+          if(jsoncontrol.containsKey("trackspeed"))
+            rotarySpeed = jsoncontrol["trackspeed"].as<int>();
           
+          int mouseMode = -1;
+          if(jsoncontrol.containsKey("trackSpringBack"))
+            mouseMode = jsoncontrol["trackSpringBack"].as<int>();
+
+          int debugDeadzone=0;
+          if(jsoncontrol.containsKey("debugDeadzone"))
+            debugDeadzone = jsoncontrol["debugDeadzone"].as<int>();
+
+
           if(xboxref!="" && remoteAddress!="null"){ //TODO: check if emulated too
             logger->log("Error: "+name+" has " +xboxref+" and remoteAddress. Cannot have both, either choose xbox or remote.");
             continue;
@@ -246,18 +267,18 @@ String Config::setup(Logger* logger, Controllers* controllers, I2CNetwork* i2c) 
           
           if(xboxref!="" && pin>0){
             logger->debug("init analog controller std "+String(name) +"-"+String(pin)+"-"+String(xboxref)+"-"+String(axis));
-            controllers->addControllerAnalog(name, pin,xboxref, axis,smoothing,sensitivity, deadzone,offset,invert);
+            controllers->addControllerAnalog(name,type, pin,pin2,xboxref, axis,smoothing,sensitivity, deadzone,offset,invert, rotarySpeed, mouseMode,debugDeadzone);
             
           }else if(xboxref!="" && pin==0){
             logger->debug("init analog controller xboxref "+String(name) +"-"+String(xboxref)+"-"+String(axis));
-            controllers->addControllerAnalog( name,  xboxref,  axis);
+            controllers->addControllerAnalog( name,type,  xboxref,  axis);
             
           }else if((remoteAddress!="null"||emulateDigital>=0) && pin>0){
             String analog_remoteAddress = String(remoteAddress);
             if(analog_remoteAddress=="null")
               analog_remoteAddress=String(networkName);
             logger->debug("init analog controller remote pin "+String(name) +"-"+String(pin)+"-"+String(remoteAddress)+"-"+String(index));
-            controllers->addControllerAnalog( name, pin,axis, smoothing, sensitivity,  deadzone,offset,invert,emulateDigital,index,emulateDigitalMinus,indexMinus, analog_remoteAddress, index, i2c);
+            controllers->addControllerAnalog( name,type, pin,pin2,axis, smoothing, sensitivity,  deadzone,offset,invert,emulateDigital,index,emulateDigitalMinus,indexMinus, analog_remoteAddress, index,rotarySpeed,mouseMode,debugDeadzone, i2c);
             
           }
         }
@@ -268,14 +289,14 @@ String Config::setup(Logger* logger, Controllers* controllers, I2CNetwork* i2c) 
           int scale = -1;
           if(jsoncontrol.containsKey("scale"))
             scale = jsoncontrol["scale"].as<int>();
-          if(jsoncontrol.containsKey("xboxRumbleSize"))
-            xboxRumbleSize = jsoncontrol["xboxRumbleSize"].as<String>();
+          if(jsoncontrol.containsKey("rumbleSize"))
+            xboxRumbleSize = jsoncontrol["rumbleSize"].as<String>();
           if(remoteAddress=="null" && xboxRumbleSize!="")
-            controllers->addRumble(name, pin, xboxRumbleSize,scale,signal);
+            controllers->addRumble(name, type,pin, xboxRumbleSize,scale,signal);
           else if(remoteAddress!="null"){
-            controllers->addRumble(name, xboxRumbleSize, remoteAddress, index);
+            controllers->addRumble(name, type,xboxRumbleSize, remoteAddress, index);
           }else if(pin>=0){
-            controllers->addRumble(name,pin,scale,signal);
+            controllers->addRumble(name,type,pin,scale,signal);
           }
         }
         

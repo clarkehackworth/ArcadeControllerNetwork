@@ -5,8 +5,8 @@
 #define I2CNetwork_h
 
 #define QUEUE_SIZE 50
-#define DATA_PACKET 5 //for queue array, 0: i2c address, 1: controller index, 2: button action, 3: state
-#define ERROR_BUS_FAULTS_BEFORE_RESET 1000
+#define DATA_PACKET 5 //for queue array, 0: i2c address, 1: controller index, 2: button action, 3: state (two bytes)
+#define ERROR_BUS_FAULTS_BEFORE_RESET 200
 
 class Controllers;
 class Logger;
@@ -44,6 +44,8 @@ class I2CNetwork{
 
     int queue[QUEUE_SIZE][DATA_PACKET]; 
     bool queueSlots[QUEUE_SIZE];
+
+    bool initialized=false;
 
 };
 #endif

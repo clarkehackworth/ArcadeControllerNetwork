@@ -3,7 +3,7 @@
 #include "DigitalControllerObj.h"
 
 # define MAX_CONFIGS 6
-# define MAX_CONTROLS 20 //per config
+# define MAX_CONTROLS 30 //per config
 # define MAX_SIGNALS 5
 
 #ifndef Controllers_h
@@ -30,16 +30,17 @@ class Controllers {
     String Setup(I2CNetwork* i2c,Logger* logger);
     void initialize();
     void initializeProfile(int profile);
+    void deinitializeProfile(int profile);
     void addConfig();
-    void addControllerDigital(String name, int pin,String* xboxButtons,int xboxButtonsSize,String* xboxButtonsDoubleTap,int xboxButtonsDoubleTapSize);
-    void addControllerDigital(String name,String* xboxButtons,int xboxButtonsSize,String* xboxButtonsDoubleTap,int xboxButtonsDoubleTapSize);
-    void addControllerDigital(String name,int pin,String remoteAddress,int remoteIndex,int emulateAnalog,I2CNetwork* i2c);
-    void addControllerAnalog(String name, int pin,String xboxref, String axis,int smoothing,int sensitivity, int deadzone, int offset,bool invert);
-    void addControllerAnalog(String name, String xboxref, String axis);
-    void addControllerAnalog(String name,int pin, String axis,int smoothing,int sensitivity, int deadzone, int offset,bool invert,int emulateDigital, int index, int emulateDigitalMinus,int indexMinus,String remoteAddress,String remoteIndex,I2CNetwork* i2c);
-    void addRumble(String name,int pin, String size,int scale,int signal);
-    void addRumble(String name, String size,String remoteAddress,int index);
-    void addRumble(String name,int pin,int scale,int signal);
+    void addControllerDigital(String name,String type, int pin,String* xboxButtons,int xboxButtonsSize,String* xboxButtonsDoubleTap,int doubleTapTime,int xboxButtonsDoubleTapSize);
+    void addControllerDigital(String name,String type,String* xboxButtons,int xboxButtonsSize,String* xboxButtonsDoubleTap,int xboxButtonsDoubleTapSize);
+    void addControllerDigital(String name,String type,int pin,String remoteAddress,int remoteIndex,int emulateAnalog,int doubleTapTime,I2CNetwork* i2c);
+    void addControllerAnalog(String name, String type,int pin,int pin2,String xboxref, String axis,int smoothing,int sensitivity, int deadzone, int offset,bool invert,int rotarySpeed,int mouseMode,int debugDeadzone);
+    void addControllerAnalog(String name, String type,String xboxref, String axis);
+    void addControllerAnalog(String name,String type,int pin,int pin2, String axis,int smoothing,int sensitivity, int deadzone, int offset,bool invert,int emulateDigital, int index, int emulateDigitalMinus,int indexMinus,String remoteAddress,String remoteIndex,int rotarySpeed,int mouseMode,int debugDeadzone,I2CNetwork* i2c);
+    void addRumble(String name,String type,int pin, String size,int scale,int signal);
+    void addRumble(String name,String type, String size,String remoteAddress,int index);
+    void addRumble(String name,String type,int pin,int scale,int signal);
 
     String performActions();
     String performActionByIndex(int index,String action,int state);
@@ -53,6 +54,7 @@ class Controllers {
     void nextConfig();
     void previousConfig();
     void setConfig(int profileId);
+    int getConfig();
     
     int getNumberOfProfiles();
     String getProfileLengths();
@@ -64,8 +66,8 @@ class Controllers {
 
   private:
     ControllerObject* getControllerByIndex(int index);
-    ControllerObject* startControllerList();
-    ControllerObject* nextController();
+    ControllerObject* startControllerList(int profile=-1);
+    ControllerObject* nextController(int profile=-1);
     void processKeyShortcuts(String key);
     void clearShortcutCounts();
     bool performMacro(ControllerNameValue key);
@@ -74,6 +76,7 @@ class Controllers {
 
     int profilesSize=-1;
     int profilesCurrent=0;
+    int profilesPrev=0;
     ControllerObject* configs[MAX_CONFIGS][MAX_CONTROLS];
     int configLengths[MAX_CONTROLS];
     int controllerCurrent=0;
@@ -89,6 +92,7 @@ class Controllers {
     int* _profileShortcutMappingsLengths;
     ControllerObject* signals[MAX_CONFIGS][MAX_SIGNALS];
     int totalSignals[MAX_CONFIGS];
+    bool firstInit = true;
     
 };
 #endif

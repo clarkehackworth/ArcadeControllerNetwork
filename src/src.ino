@@ -5,6 +5,10 @@
 #include "Controllers.h"
 #include "I2CNetwork.h"
 
+#include <RotaryEncoder.h>
+
+#define LOOP_IDLE 10
+
 I2CNetwork i2c;
 Logger logger;
 Config config;
@@ -37,19 +41,22 @@ void setup() {
     }
   }
 
-  controllers.initialize();
-
-
+   controllers.initialize();
+   
 }
 
 void loop() {
-    
+  
   unsigned long start = millis();
   controllers.performActions();
   i2c.performAction();
   XInput.send();
   unsigned long currentTiming = millis()-start;
   //Serial.print(".");
+  // if(currentTiming>1)
+  //   logger.log("INFO: Main loop took "+String(currentTiming)+ " milliseconds.");
   if(currentTiming>20)
     logger.log("INFO: Main loop took "+String(currentTiming)+ " milliseconds.");
+  if(currentTiming<=LOOP_IDLE)
+    delay(LOOP_IDLE-currentTiming); //Don't go too fast
 }

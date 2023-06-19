@@ -1,24 +1,27 @@
 #include "Logger.h"
 #include "RumbleObj.h"
 
-RumbleObject::RumbleObject(String name, int pin, String size,int scale,Logger* logger){
+RumbleObject::RumbleObject(String name,String type, int pin, String size,int scale,Logger* logger){
   _name = name;
+  _type=type;
   _pin = pin;
   _size = size;
   if(scale>=0)
     _scale = scale;
   _logger = logger;
 }
-RumbleObject::RumbleObject(String name, String size, String remoteAddress, String index,I2CNetwork* i2c,Logger* logger){
+RumbleObject::RumbleObject(String name,String type, String size, String remoteAddress, String index,I2CNetwork* i2c,Logger* logger){
   _name = name;
+  _type=type;
   _size = size;
   _remoteAddress=(int)remoteAddress.toInt();
   _remoteIndex=(int)index.toInt();
   _i2c = i2c; 
   _logger = logger;
 }
-RumbleObject::RumbleObject(String name,int pin,int scale,Logger* logger){
+RumbleObject::RumbleObject(String name,String type,int pin,int scale,Logger* logger){
   _name = name;
+  _type=type;
   _pin = pin;
   if(scale>=0)
     _scale = scale;
@@ -30,8 +33,12 @@ void RumbleObject::initialize(){
   ControllerObject::initialize();
   //_logger->log("Let's get ready to rumble!");
   _logger->debug("Initialize "+String(_name)+" on "+String(_pin));
-  if(_pin>=0)
+  if(_pin>=0){
     pinMode(_pin,OUTPUT);
+     if(_size=="left"){
+       pinMode(LED_PIN,OUTPUT);
+     }
+  }
 }
 
 String RumbleObject::performAction(int groupState){
@@ -56,6 +63,10 @@ String RumbleObject::performControllerAction(String action,int state, int groupS
       //_logger->debug("Rumble: perform controller action "+String(action)+" "+String(state)+" "+String(_pin)+" adjusted "+String(calcScale(state)));
 
       analogWrite(_pin, calcScale(state));
+      
+      if(_size=="left"){
+        analogWrite(LED_PIN,state);
+      }
       _prevState = state;
     }
     return "";

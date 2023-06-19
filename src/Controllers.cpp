@@ -49,41 +49,41 @@ void Controllers::addConfig(){
   totalSignals[profilesSize]=0;
 }
 
-void Controllers::addControllerDigital(String name, int pin,String* xboxButtons,int xboxButtonsSize,String* xboxButtonsDoubleTap,int xboxButtonsDoubleTapSize){
+void Controllers::addControllerDigital(String name,String type, int pin,String* xboxButtons,int xboxButtonsSize,String* xboxButtonsDoubleTap,int xboxButtonsDoubleTapSize, int doubleTapTime){
   _logger->debug("adding digital std controller "+String(name) +"-"+String(pin)+"-"+String(xboxButtons[0])+"-"+String(xboxButtonsSize));
-  configs[profilesSize][configLengths[profilesSize]]= new DigitalControllerObject(name,pin,xboxButtons,xboxButtonsSize,xboxButtonsDoubleTap,xboxButtonsDoubleTapSize,_logger);
+  configs[profilesSize][configLengths[profilesSize]]= new DigitalControllerObject(name,type,pin,xboxButtons,xboxButtonsSize,xboxButtonsDoubleTap,xboxButtonsDoubleTapSize,doubleTapTime,_logger);
   configLengths[profilesSize]=configLengths[profilesSize]+1;
 }
-void Controllers::addControllerDigital(String name,String* xboxButtons,int xboxButtonsSize,String* xboxButtonsDoubleTap,int xboxButtonsDoubleTapSize){
+void Controllers::addControllerDigital(String name,String type,String* xboxButtons,int xboxButtonsSize,String* xboxButtonsDoubleTap,int xboxButtonsDoubleTapSize){
   _logger->debug("adding digital reciever controller "+String(name) +"-"+String(xboxButtons[0])+"-"+String(xboxButtonsSize));
-  configs[profilesSize][configLengths[profilesSize]]= new DigitalControllerObject(name,xboxButtons,xboxButtonsSize,xboxButtonsDoubleTap,xboxButtonsDoubleTapSize,_logger);
+  configs[profilesSize][configLengths[profilesSize]]= new DigitalControllerObject(name,type,xboxButtons,xboxButtonsSize,xboxButtonsDoubleTap,xboxButtonsDoubleTapSize,_logger);
   configLengths[profilesSize]=configLengths[profilesSize]+1;
 }
-void Controllers::addControllerDigital(String name,int pin,String remoteAddress,int remoteIndex,int emulateAnalog,I2CNetwork* i2c){
+void Controllers::addControllerDigital(String name,String type,int pin,String remoteAddress,int remoteIndex,int emulateAnalog,int doubleTapTime,I2CNetwork* i2c){
   _logger->debug("adding digital remote pin controller "+String(name) +"-"+String(pin)+"-"+String(remoteAddress)+"-"+String(remoteIndex));
-  configs[profilesSize][configLengths[profilesSize]]= new DigitalControllerObject(name,pin,remoteAddress,remoteIndex,emulateAnalog,i2c,_logger);
+  configs[profilesSize][configLengths[profilesSize]]= new DigitalControllerObject(name,type,pin,remoteAddress,remoteIndex,emulateAnalog,doubleTapTime,i2c,_logger);
   configLengths[profilesSize]=configLengths[profilesSize]+1;
 }
 
-void Controllers::addControllerAnalog(String name, int pin,String xboxref, String axis,int smoothing,int sensitivity, int deadzone, int offset,bool invert){
+void Controllers::addControllerAnalog(String name,String type, int pin,int pin2,String xboxref, String axis,int smoothing,int sensitivity, int deadzone, int offset,bool invert,int rotarySpeed, int mouseMode,int debugDeadzone){
   _logger->debug("adding analog std controller "+String(name) +"-"+String(pin)+"-"+xboxref+"-"+axis+"-"+String(smoothing)+"-"+String(sensitivity)+"-"+String(deadzone));
-  configs[profilesSize][configLengths[profilesSize]]= new AnalogControllerObject(name,pin,xboxref,axis,smoothing,sensitivity, deadzone,offset,invert,_logger);
+  configs[profilesSize][configLengths[profilesSize]]= new AnalogControllerObject(name,type,pin,pin2,xboxref,axis,smoothing,sensitivity, deadzone,offset,invert,rotarySpeed, mouseMode,debugDeadzone,_logger);
   configLengths[profilesSize]=configLengths[profilesSize]+1;
 }
-void Controllers::addControllerAnalog(String name, String xboxref, String axis){
+void Controllers::addControllerAnalog(String name,String type, String xboxref, String axis){
   _logger->debug("adding analog reciever controller "+String(name) +"-"+String(xboxref)+"-"+String(axis));
-  configs[profilesSize][configLengths[profilesSize]]= new AnalogControllerObject( name,  xboxref,  axis, _logger);
+  configs[profilesSize][configLengths[profilesSize]]= new AnalogControllerObject( name,type,  xboxref,  axis, _logger);
   configLengths[profilesSize]=configLengths[profilesSize]+1;
 }
-void Controllers::addControllerAnalog(String name,int pin, String axis,int smoothing,int sensitivity, int deadzone, int offset,bool invert,int emulateDigital, int index, int emulateDigitalMinus,int indexMinus,String remoteAddress,String remoteIndex,I2CNetwork* i2c){
+void Controllers::addControllerAnalog(String name,String type,int pin, int pin2, String axis,int smoothing,int sensitivity, int deadzone, int offset,bool invert,int emulateDigital, int index, int emulateDigitalMinus,int indexMinus,String remoteAddress,String remoteIndex,int rotarySpeed, int mouseMode,int debugDeadzone,I2CNetwork* i2c){
   _logger->debug("adding analog remote pin controller "+String(name) +"-"+String(pin)+"-"+String(remoteAddress)+"-"+String(remoteIndex)+"-"+String(smoothing)+"-"+String(sensitivity)+"-"+String(deadzone));
-  configs[profilesSize][configLengths[profilesSize]]= new AnalogControllerObject( name, pin, axis,  smoothing, sensitivity,  deadzone, offset,invert,emulateDigital,index,emulateDigitalMinus,indexMinus, remoteAddress, remoteIndex, i2c,_logger);
+  configs[profilesSize][configLengths[profilesSize]]= new AnalogControllerObject( name,type, pin, pin2, axis,  smoothing, sensitivity,  deadzone, offset,invert,emulateDigital,index,emulateDigitalMinus,indexMinus, remoteAddress, remoteIndex,rotarySpeed, mouseMode,debugDeadzone, i2c,_logger);
   configLengths[profilesSize]=configLengths[profilesSize]+1;
 }
 
-void Controllers::addRumble(String name,int pin, String size,int scale,int signal){
+void Controllers::addRumble(String name,String type,int pin, String size,int scale,int signal){
   _logger->debug("adding rumble std "+String(name) +"-"+String(pin)+"-"+String(size));
-  RumbleObject* ro = new RumbleObject(name, pin, size, scale, _logger);
+  RumbleObject* ro = new RumbleObject(name,type, pin, size, scale, _logger);
   //ro->count(10);
   configs[profilesSize][configLengths[profilesSize]]= ro;
   
@@ -95,15 +95,15 @@ void Controllers::addRumble(String name,int pin, String size,int scale,int signa
   configLengths[profilesSize]=configLengths[profilesSize]+1;
 }
 
-void Controllers::addRumble(String name, String size,String remoteAddress,int index){
+void Controllers::addRumble(String name,String type, String size,String remoteAddress,int index){
   _logger->debug("adding rumble remote "+String(name) +"-"+String(size)+"-"+String(remoteAddress)+"-"+String(index));
-  configs[profilesSize][configLengths[profilesSize]]= new RumbleObject(name, size, remoteAddress, index, _i2c,_logger);
+  configs[profilesSize][configLengths[profilesSize]]= new RumbleObject(name,type, size, remoteAddress, index, _i2c,_logger);
   configLengths[profilesSize]=configLengths[profilesSize]+1;
 }
 
-void Controllers::addRumble(String name,int pin,int scale,int signal){
+void Controllers::addRumble(String name,String type,int pin,int scale,int signal){
   _logger->debug("adding rumble remote reciever "+String(name)+"-"+String(pin));
-  RumbleObject* ro = new RumbleObject(name,pin, scale,_logger);
+  RumbleObject* ro = new RumbleObject(name,type,pin, scale,_logger);
   configs[profilesSize][configLengths[profilesSize]]= ro;
   if(signal==1){
     //_logger->debug("adding signal on profile "+String(profilesSize)+" "+String(totalSignals[profilesSize]));
@@ -121,17 +121,21 @@ ControllerObject* Controllers::getControllerByIndex(int index) {
   return configs[profilesCurrent][index];
 }
 
-ControllerObject* Controllers::startControllerList() {
+ControllerObject* Controllers::startControllerList(int profile) {
+  if(profile==-1)
+    profile = profilesCurrent;
   controllerCurrent=-1;
   //logger.debug("StartControllerList "+String(profilesCurrent));
-  return nextController();
+  return nextController(profile);
 }
-ControllerObject* Controllers::nextController() {
+ControllerObject* Controllers::nextController(int profile) {
+  if(profile==-1)
+    profile = profilesCurrent;
   controllerCurrent=controllerCurrent+1;
-  //logger.debug("nextController "+String(controllerCurrent)+" of "+String(configLengths[profilesCurrent]));
-  if(controllerCurrent>=configLengths[profilesCurrent])
+  //_logger->debug("nextController "+String(controllerCurrent)+" of "+String(configLengths[profile]));
+  if(controllerCurrent>=configLengths[profile])
     return NULL;
-  return configs[profilesCurrent][controllerCurrent];
+  return configs[profile][controllerCurrent];
 }
 
 void Controllers::initialize(){
@@ -139,8 +143,10 @@ void Controllers::initialize(){
   clearXInputs();
   XInput.begin();
   XInput.setAutoSend(false);
+  deinitializeProfile(profilesPrev);
   initializeProfile(profilesCurrent);
   if(totalSignals[profilesCurrent]>0){
+    //send signal to all our setup singal mechanisms as to which profile we have inited
     for(int i=0;i<totalSignals[profilesCurrent];i++){
       //_logger->debug("signal on profile "+String(profilesCurrent) +" "+String(i));
       signals[profilesCurrent][i]->count(profilesCurrent+1);//profiles start at 0
@@ -159,12 +165,25 @@ void Controllers::initializeProfile(int profile){
     controller->initialize();
     controller = nextController();
   }
+  firstInit=false;
+}
+
+void Controllers::deinitializeProfile(int profile){
+  if(!firstInit){
+    _logger->log("Deinitializing controllers with profile "+String(profile));
+    ControllerObject* controller = startControllerList(profile);
+    while(controller!=NULL){
+      controller->deinitialize();
+      controller = nextController(profile);
+    }
+  }
 }
 
 String Controllers::performActions(){
   ControllerObject* controller = startControllerList();
   while(controller!=NULL){
-    //_logger->log("Controllers: cotroller "+controller->name());
+    // unsigned long start = millis();
+    // _logger->log("Controllers: cotroller "+controller->name());
     int groupid = controller->getGroup(); 
     int groupState = 0;  //TODO: look up group state
     String action = controller->performAction(groupState);
@@ -174,7 +193,8 @@ String Controllers::performActions(){
     }else if(action !="" && controller->isDigital()){
       processKeyShortcuts(action);
     }
-    
+    // unsigned long currentTiming = millis()-start;
+    // _logger->log("Controllers: cotroller "+controller->name() +" in "+String(currentTiming));
     controller = nextController();
   }
   return "";
@@ -199,7 +219,7 @@ String Controllers::performActionByIndex(int index,String action,int state){
 void Controllers::processKeyShortcuts(String key){
   if(key.startsWith("Error"))
     return;
-  _logger->log("Controllers: checking shortcut key "+String(key));
+  //_logger->log("Controllers: checking shortcut key "+String(key));
   for(int shortcutIndex=0;shortcutIndex<_numberOfShortcuts;shortcutIndex++){//go through all the shortcuts
     for(int mappingIndex=0;mappingIndex<_profileShortcutMappingsLengths[profilesCurrent];mappingIndex++){//then go through all the mappings
       if(_profileShortcutMappings[profilesCurrent][mappingIndex].valueA==shortcutIndex){ //if a shortcut is in the mapping
@@ -265,6 +285,7 @@ bool Controllers::performMacro(ControllerNameValue shortcutMapping){
 }
 
 void Controllers::nextConfig(){
+  profilesPrev = profilesCurrent;
   profilesCurrent++;
   if(profilesCurrent>profilesSize)
     profilesCurrent=0;
@@ -272,7 +293,12 @@ void Controllers::nextConfig(){
   initialize();
 }
 
+int Controllers::getConfig(){
+  return profilesCurrent;
+}
+
 void Controllers::previousConfig(){
+  profilesPrev = profilesCurrent;
   profilesCurrent--;
   if(profilesCurrent<0)
     profilesCurrent=profilesSize;

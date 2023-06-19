@@ -6,12 +6,13 @@
 typedef struct
 {
   const char *name;
-  uint8_t  value;
+  uint8_t  value;  
 }buttonLookup;
 static buttonLookup ButtonAction[] =
 {
   {  "Acknowledge", 255  },
-  {  "Reset", 102  },
+  {  "Reset", 103 },
+  {  "GetConfig", 102  },
   {  "ChangeConfig", 101  },
   {  "Acknowledge", 100  },
   {  "Rumble" , 12 },
@@ -49,21 +50,29 @@ String I2CNetwork::setup(String networkName, int numberOfSlaves,int* configslave
   master=false;
   once=false;
 
-  slaves = (int*)malloc(_numberOfSlaves*sizeof(int));
-  for(int i=0;i<_numberOfSlaves;i++){
-    slaves[i] = configslaves[i];
-    // Serial.println("i2c Slave: "+String(slaves[i]));
-  }
   
+  
+  for(int i=0;i<QUEUE_SIZE;i++){
+    queueSlots[i]=false;
+  }
+  transmissionError=0;
+
   if(_name.toInt()==0){
     // Initialize I2C communications as Master
     // Wire.begin();
     master=true;
     enable=true;
+    slaves = (int*)malloc(_numberOfSlaves*sizeof(int));
+    for(int i=0;i<_numberOfSlaves;i++){
+      slaves[i] = configslaves[i];
+      // Serial.println("i2c Slave: "+String(slaves[i]));
+    }
   }else{
     enable=true;
     master=false;
-    // Wire.begin((int)_name.toInt());
+    addToQueue(0, 0, "GetConfig", _name.toInt());
+
+    //Wire.begin((int)_name.toInt());
     // Function to run when data requested from master
     //Wire.onRequest(requestEvent); 
     // Wire.onRequest([] (int howMany) {receiveEvent(howMany);});
@@ -72,10 +81,7 @@ String I2CNetwork::setup(String networkName, int numberOfSlaves,int* configslave
     // Wire.onReceive(receiveEvent);
   }
   
-  for(int i=0;i<QUEUE_SIZE;i++){
-    queueSlots[i]=false;
-  }
-  transmissionError=0;
+  initialized=true;
   return "";  
 }
 
@@ -100,7 +106,7 @@ String I2CNetwork::buttonlookup( int i )
 String I2CNetwork::addToQueue(int address,int index,String action,int value){
   
   if(action!=""){
-    _logger->debug("IC2Network: adding to queue "+String(address)+"-"+String(index)+"-"+action+"-"+String(value));
+    //_logger->debug("IC2Network: adding to queue "+String(address)+"-"+String(index)+"-"+action+"-"+String(value));
     int i=0;
     for(;i<QUEUE_SIZE;i++){
       if(!queueSlots[i]){
@@ -132,7 +138,7 @@ void I2CNetwork::performAction(){
       int actionid = queue[i][2];
       int state = queue[i][3];
       //_logger->log("I2CNetwork: found in queue:"+String(address)+", "+String(index)+", "+String(actionid)+", "+String(state));
-      if(address==name().toInt() || address==-1){
+      if(address==name().toInt() || address==-1){//-1 is how this device references itself, like loopback
         
         if(address==-1)
           _logger->log("I2CNetwork: picked up item for negative address: "+String(address)+", "+String(index)+", "+String(actionid)+", "+String(state));
@@ -167,16 +173,18 @@ void I2CNetwork::performAction(){
           if(busStatus != 0x00){
             //Bus fault or slave fault
             //TWCR = 0;
-            
+            unsigned long currentTime = millis();
             transmissionError+=1;
-            if(transmissionError>ERROR_BUS_FAULTS_BEFORE_RESET && transmissionErrorTime+5000<millis()){
+            if(transmissionError>ERROR_BUS_FAULTS_BEFORE_RESET && transmissionErrorTime+5000<currentTime){
               _logger->log("I2CNetwork: Transmission Error 1 to slave "+String(queue[i][0])+", resetting bus");
+              busStatus = Wire.endTransmission();
               Wire.begin();
               transmissionError=0;
-              transmissionErrorTime = millis();
+              transmissionErrorTime = currentTime;
             }
             
           }else{
+            //_logger->debug("I2C sent message");
             queueSlots[i]=false;
           }
         }
@@ -192,12 +200,14 @@ void I2CNetwork::performAction(){
       while(!end){
         //_logger->debug("I2CNetwork: asking slave "+String(slaves[i]));
         //Serial.print(".");
-        Wire.requestFrom(slaves[i],DATA_PACKET);
+        Wire.requestFrom(slaves[i],DATA_PACKET );
+        //_logger->debug("I2CNetwork: asking slave "+String(slaves[i])+" "+String(Wire.available()));
         String response = "";
         if(Wire.available()) {
           int address = Wire.read();
           int index = Wire.read();
           int actionid = Wire.read();
+          //_logger->debug("I2CNetwork: data "+String(address)+" "+String(index)+" "+String(actionid));
           int state = (signed char) Wire.read()<<8 | Wire.read();
           // if(actionid!=255)
           //   _logger->debug("I2C raw message 2:"+String(address)+" "+String(index)+" "+String(actionid)+" "+String(state)+" -> "+String(doublebyte_to_binary(state)));
@@ -226,13 +236,15 @@ void I2CNetwork::performAction(){
         }else{
           //Bus fault or slave fault
           end=true;
-          //TWCR = 0;
+          
+          unsigned long currentTime = millis();
           transmissionError+=1;
-          if(transmissionError>ERROR_BUS_FAULTS_BEFORE_RESET && transmissionErrorTime+5000<millis()){
+          if(transmissionError>ERROR_BUS_FAULTS_BEFORE_RESET && transmissionErrorTime+5000<currentTime){
             _logger->log("I2CNetwork: Transmission Error 2 to slave "+String(slaves[i])+", resetting bus");
             Wire.begin();
+            byte busStatus = Wire.endTransmission();
             transmissionError=0;
-            transmissionErrorTime = millis();
+            transmissionErrorTime = currentTime;
           }
         }
       } 
@@ -273,86 +285,96 @@ String I2CNetwork::processAction(int actionid, int value) {
   if(action=="Reset"){
     _controllers->initialize();
   }
+  if(action=="GetConfig"){
+    //_logger->debug("IC2Network: recieved getconfig");
+    addToQueue(value, 0, "ChangeConfig", _controllers->getConfig());
+  }
   return "";
 }
 
 
 void I2CNetwork::receiveEvent(int howMany) {
-  _logger->debug("recieveEvent");
-  // Read while data received
-  while (0 < Wire.available()) {
-    int address = Wire.read();
-    int controllerid = Wire.read();
-    int actionid = Wire.read();
-    // byte stateHigh = (signed char) Wire.read();
-    // byte stateLow = (signed char) Wire.read();
-    // int state = (signed char)(stateHigh<<8)|stateLow;
-    int state = (signed char) Wire.read()<<8 | Wire.read();
-    // if(actionid!=255)
-    //   _logger->debug("I2C raw message 3: "+String(address)+" "+String(controllerid)+" "+String(actionid)+" "+String(state) +" -> "+String(doublebyte_to_binary(state)));
-    if(address!=(int)name().toInt()){//This really shouldn't happen, but lets make sure
-      _logger->log("Error: "+name()+" recieved message for another node "+String(address)+"-"+String(controllerid)+"-"+String(actionid)+"-"+String(state));
-      continue;
-    }
-    _logger->debug("recieveEvent: "+name()+" recieved message "+String(address)+"-"+String(controllerid)+"-"+String(actionid)+"-"+String(state));
+  if(initialized){
+    //_logger->debug("recieveEvent");
+    // Read while data received
+    while (0 < Wire.available()) {
+      int address = Wire.read();
+      int controllerid = Wire.read();
+      int actionid = Wire.read();
+      // byte stateHigh = (signed char) Wire.read();
+      // byte stateLow = (signed char) Wire.read();
+      // int state = (signed char)(stateHigh<<8)|stateLow;
+      int state = (signed char) Wire.read()<<8 | Wire.read();
+      // if(actionid!=255)
+      //   _logger->debug("I2C raw message 3: "+String(address)+" "+String(controllerid)+" "+String(actionid)+" "+String(state) +" -> "+String(doublebyte_to_binary(state)));
+      if(address!=(int)name().toInt()){//This really shouldn't happen, but lets make sure
+        _logger->log("Error: "+name()+" recieved message for another node "+String(address)+"-"+String(controllerid)+"-"+String(actionid)+"-"+String(state));
+        Wire.begin((int)_name.toInt());
+        continue;
+      }
+      //_logger->debug("recieveEvent: "+name()+" recieved message "+String(address)+"-"+String(controllerid)+"-"+String(actionid)+"-"+String(state));
 
-    //String result = _controllers->performActionByIndex(controllerid,buttonlookup(action),state);
-    String action = processAction(actionid,state);
-    if(action == ""){
-      String result = _controllers->performActionByIndex(controllerid,buttonlookup(actionid),state);
-      if(result!="")//error
-        _logger->log(result+" using I2cNetwork");
+      //String result = _controllers->performActionByIndex(controllerid,buttonlookup(action),state);
+      String action = processAction(actionid,state);
+      if(action == ""){
+        String result = _controllers->performActionByIndex(controllerid,buttonlookup(actionid),state);
+        if(result!="")//error
+          _logger->log(result+" using I2cNetwork");
+      }
     }
+
+    // Print to Serial Monitor
+    //_logger->debug("Receive event");
   }
-
-  // Print to Serial Monitor
-  _logger->debug("Receive event");
 }
 
 void I2CNetwork::requestEvent() {
-  //_logger->debug("requestEvent");
-  int size = 0;
-  bool dataToSend = false;
-  for(int i=0;i<QUEUE_SIZE;i++){
-    if(queueSlots[i]){
-      size+=1;
-      dataToSend = true;
-    }
-  }
-  if(size==0)
-    size = DATA_PACKET;//subtract one as state is divided in high and low bytes, as we are just storing in memory int will work fine.
-  else
-    size = size*(DATA_PACKET);
-  // Setup byte variable in the correct size
-  byte response[size];
-  if(dataToSend){
-    int tmpnum=0;
+  if(initialized){
+    //_logger->debug("requestEvent");
+    int size = 0;
+    bool dataToSend = false;
     for(int i=0;i<QUEUE_SIZE;i++){
       if(queueSlots[i]){
-        response[tmpnum+0]=queue[i][0];
-        response[tmpnum+1]=queue[i][1];
-        response[tmpnum+2]=queue[i][2];
-        char highbyte=(queue[i][3] & 0xFF00)>>8; //shift right 8 bits, leaving only the 8 high bits. 
-        char lowbyte=queue[i][3] & 0xFF; //bitwise AND with 0xFF
-        response[tmpnum+3]=highbyte;
-        response[tmpnum+4]=lowbyte;
-        queueSlots[i]=false;
-        tmpnum+=1;
-        //_logger->debug("I2C raw message 4:"+String(queue[i][0])+" "+String(queue[i][1])+" "+String(queue[i][2])+" "+String(queue[i][3]) +" -> "+String(doublebyte_to_binary(queue[i][3])) +" ["+String(byte_to_binary(highbyte))+","+String(byte_to_binary(lowbyte))+"]");
+        size+=1;
+        dataToSend = true;
       }
     }
-  }else{
-    response[0]=0;
-    response[1]=0; 
-    response[2]=actionlookup("Acknowledge"); 
-    response[3]=0; 
-    response[4]=0;
+    if(size==0)
+      size = DATA_PACKET;
+    else
+      size = size*(DATA_PACKET);
+    // Setup byte variable in the correct size
+    byte response[size];
+    if(dataToSend){
+      int tmpnum=0;
+      for(int i=0;i<QUEUE_SIZE;i++){
+        if(queueSlots[i]){
+          response[tmpnum+0]=queue[i][0];
+          response[tmpnum+1]=queue[i][1];
+          response[tmpnum+2]=queue[i][2];
+          char highbyte=(queue[i][3] & 0xFF00)>>8; //shift right 8 bits, leaving only the 8 high bits. 
+          char lowbyte=queue[i][3] & 0xFF; //bitwise AND with 0xFF
+          response[tmpnum+3]=highbyte;
+          response[tmpnum+4]=lowbyte;
+          queueSlots[i]=false;
+          tmpnum+=1;
+          //_logger->debug("I2C raw message 4:"+String(queue[i][0])+" "+String(queue[i][1])+" "+String(queue[i][2])+" "+String(queue[i][3]) +" -> "+String(doublebyte_to_binary(queue[i][3])) +" ["+String(byte_to_binary(highbyte))+","+String(byte_to_binary(lowbyte))+"]");
+        }
+      }
+    }else{
+      response[0]=0;
+      response[1]=0; 
+      response[2]=actionlookup("Acknowledge"); 
+      response[3]=0; 
+      response[4]=0;
+    }
+
+    // Send response back to Master
+    Wire.write(response,sizeof(response));
+
+    // if(response[4]!=0)
+    //   _logger->debug("Request event, to send "+String(dataToSend)+", sent "+String(sizeof(response)));
   }
-
-  // Send response back to Master
-  Wire.write(response,sizeof(response));
-
-  //_logger->debug("Request event, to send "+String(dataToSend)+", sent "+String(sizeof(response)));
 }
 
 bool I2CNetwork::isEnabled(){

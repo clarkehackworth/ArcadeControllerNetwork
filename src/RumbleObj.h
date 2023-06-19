@@ -4,8 +4,11 @@
 #ifndef RumbleObj_h
 #define RumbleObj_h
 
+#define LED_PIN 13
+
 #define RUMBLE_ARRAY_SIZE 30
 #define AnalogWrite_Max 255  // 10-bit ADC
+
 
 class I2CNetwork;
 class Logger;
@@ -14,9 +17,9 @@ class Logger;
 class RumbleObject : public ControllerObject{
   public:
     
-    RumbleObject(String name, int pin, String size,int scale,Logger* logger);
-    RumbleObject(String name, String size, String remoteAddress, String index,I2CNetwork* i2c,Logger* logger);
-    RumbleObject(String name,int pin,int scale,Logger* logger);
+    RumbleObject(String name,String type, int pin, String size,int scale,Logger* logger);
+    RumbleObject(String name,String type, String size, String remoteAddress, String index,I2CNetwork* i2c,Logger* logger);
+    RumbleObject(String name,String type,int pin,int scale,Logger* logger);
 
     String performAction(int groupState=0) override;
     String performControllerAction(String action,int state, int groupState=0) override;
