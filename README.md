@@ -2,11 +2,12 @@
 
 # Arcade Controller Network
 <img align="right" src=".\docs\images\logos\ACN_logo.png" width="100px">
-The Arcade Controller Network takes arcade controller joystick/button hardware and presents it to a computer or some game consoles (such as the Steam Deck), as standard modern game controllers. Allowing for versitle configurations of the arcade hardware to accomidate multiple types of games and controller scenerios. Even adding elements of modern game play into the arcade experience, such as modern rumble, analog joysticks and mouse/keyboard inputs.
+<div align="left">The Arcade Controller Network takes arcade controller joystick/button hardware and presents it to a computer or some game consoles (such as the Steam Deck), as standard modern game controllers. Allowing for versitle configurations of the arcade hardware to accomidate multiple types of games and controller scenerios. Even adding elements of modern game play into the arcade experience, such as modern rumble, analog joysticks and mouse/keyboard inputs.
 
 Standard arcade controls, with the 4 way stick and 4 to 6 action buttons, can be limiting when playing modern games. Modern consoles, such as the Steam Deck, have more advanced controls and mapping available. This project is meant to complement these advancements. Configuration profiles for the Arcade Controller Network are used to faciliate different modes of play. Like 4 player standard arcade setups (for arcade cabnets/boxes with that hardware), 2 player extended controls with multiple joysticks per player, or a super setup for one user with all of the modern game controls mapped to an arcade control. 
 
 As the name suggests this isn't just about the controls. Each controller is networked together through the i2c bus, which runs between each controller device. The network aspect allows a configuration profile to shift a joystick/button/etc to another controller. This means that controls are not stuck to the controller that they are wired to. This provides a large amount of versatility in configuration and an easy way to shift play modes without rewiring your arcade cabnet. 
+</div>
 <p><br>
 
 ## Overview
