@@ -7,8 +7,11 @@
 Standard arcade controls, with the 4 way stick and 4 to 6 action buttons, can be limiting when playing modern games. Modern consoles, such as the Steam Deck, have more advanced controls and mapping available. This project is meant to complement these advancements. Configuration profiles for the Arcade Controller Network are used to faciliate different modes of play. Like 4 player standard arcade setups (for arcade cabnets/boxes with that hardware), 2 player extended controls with multiple joysticks per player, or a super setup for one user with all of the modern game controls mapped to an arcade control. 
 
 As the name suggests this isn't just about the controls. Each controller is networked together through the i2c bus, which runs between each controller device. The network aspect allows a configuration profile to shift a joystick/button/etc to another controller. This means that controls are not stuck to the controller that they are wired to. This provides a large amount of versatility in configuration and an easy way to shift play modes without rewiring your arcade cabnet. 
+
+Warning: This project is a work in progress. The code should work for the most part,but the documentation is incomplete. I have taken a break,but will be coming back to project to get my arcade machine up and going.
 </div>
 <p><br>
+
 
 ## Overview
 This project consists of three separate components. Firstly, the hardware which wires up the inputs and outputs of the arcade controls with a Teensy 4.1 microcontroller in the middle. Secondly, the software which runs on the Teensy 4.1 microcontroller and presents itself as an Xbox controller or mouse/keyboard to a computer or game console, like the Steam Deck. (note: this can *not* be used with an Xbox or other game system which requires the controller security hardware)
