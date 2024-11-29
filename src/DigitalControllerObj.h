@@ -56,7 +56,7 @@ class DigitalControllerObject : public ControllerObject{
     String* _xboxButtonsDoubleTap;
     int _xboxButtonsSize;
     int _xboxButtonsSizeDoubleTap;
-    int _doubleTapDelay=300;
+    int _doubleTapDelay=0;//default comes from config obj
     bool doubleTapEnabled = false;
     bool doubleTapStarted = false;
     bool doubleTapActivated = false;
