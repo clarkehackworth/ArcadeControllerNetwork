@@ -36,6 +36,7 @@ class I2CNetwork{
     bool master;
     int _numberOfSlaves;
     int* slaves;
+    bool* informedSlaves;
     bool once;
     Logger* _logger;
     Controllers* _controllers;

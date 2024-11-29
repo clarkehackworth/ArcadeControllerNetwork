@@ -66,7 +66,14 @@ String I2CNetwork::setup(String networkName, int numberOfSlaves,int* configslave
     for(int i=0;i<_numberOfSlaves;i++){
       slaves[i] = configslaves[i];
       // Serial.println("i2c Slave: "+String(slaves[i]));
+      addToQueue(slaves[i],0,"Reset",-1);
     }
+
+    informedSlaves = (bool*)malloc(_numberOfSlaves*sizeof(bool));
+    for(int i=0;i<_numberOfSlaves;i++){
+      informedSlaves[i] = false;
+    }
+
   }else{
     enable=true;
     master=false;
@@ -196,58 +203,61 @@ void I2CNetwork::performAction(){
   if(master){
     for(int i=0;i<_numberOfSlaves;i++){
       
-      bool end = false;
-      while(!end){
-        //_logger->debug("I2CNetwork: asking slave "+String(slaves[i]));
-        //Serial.print(".");
-        Wire.requestFrom(slaves[i],DATA_PACKET );
-        //_logger->debug("I2CNetwork: asking slave "+String(slaves[i])+" "+String(Wire.available()));
-        String response = "";
-        if(Wire.available()) {
-          int address = Wire.read();
-          int index = Wire.read();
-          int actionid = Wire.read();
-          //_logger->debug("I2CNetwork: data "+String(address)+" "+String(index)+" "+String(actionid));
-          int state = (signed char) Wire.read()<<8 | Wire.read();
-          // if(actionid!=255)
-          //   _logger->debug("I2C raw message 2:"+String(address)+" "+String(index)+" "+String(actionid)+" "+String(state)+" -> "+String(doublebyte_to_binary(state)));
+      if(informedSlaves[i]){ // only try to communicate with slave if slave has informed in
+        bool end = false;
+        while(!end){
+          //_logger->debug("I2CNetwork: asking slave "+String(slaves[i]));
+          //Serial.print(".");
+          Wire.requestFrom(slaves[i],DATA_PACKET );
+          //_logger->debug("I2CNetwork: asking slave "+String(slaves[i])+" "+String(Wire.available()));
+          String response = "";
+          if(Wire.available()) {
+            int address = Wire.read();
+            int index = Wire.read();
+            int actionid = Wire.read();
+            //_logger->debug("I2CNetwork: data "+String(address)+" "+String(index)+" "+String(actionid));
+            int state = (signed char) Wire.read()<<8 | Wire.read();
+            // if(actionid!=255)
+            //   _logger->debug("I2C raw message 2:"+String(address)+" "+String(index)+" "+String(actionid)+" "+String(state)+" -> "+String(doublebyte_to_binary(state)));
 
-          String action = processAction(actionid,state);
-          if(action=="Acknowledge")
+            String action = processAction(actionid,state);
+            if(action=="Acknowledge")
+              end=true;
+            if(end || action!="")
+              continue;
+            
+            
+            if(address==0){ //message for Master
+              //_logger->debug("I2C Message recieved for master from slave, "+String(address)+" "+String(index)+" "+String(actionid)+" "+String(state));
+
+              String result = _controllers->performActionByIndex(index,buttonlookup(actionid),state);
+              
+              if(result!="")//error
+                _logger->log(result+" using I2cNetwork");
+            }else{ // message for another slave, so we pass it on
+              String result = addToQueue(address,index,buttonlookup(actionid),state);
+              if(result!="")
+                _logger->log(result);
+            }
+            
+              
+          }else{
+            //Bus fault or slave fault
             end=true;
-          if(end || action!="")
-            continue;
-          
-          
-          if(address==0){ //message for Master
-            //_logger->debug("I2C Message recieved for master from slave, "+String(address)+" "+String(index)+" "+String(actionid)+" "+String(state));
+            
+            unsigned long currentTime = millis();
+            transmissionError+=1;
+            if(transmissionError>ERROR_BUS_FAULTS_BEFORE_RESET && transmissionErrorTime+5000<currentTime){
+              _logger->log("I2CNetwork: Transmission Error 2 to slave "+String(slaves[i])+", resetting bus");
+              Wire.begin();
+              byte busStatus = Wire.endTransmission();
+              transmissionError=0;
+              transmissionErrorTime = currentTime;
+            }
+          }
+        } 
 
-            String result = _controllers->performActionByIndex(index,buttonlookup(actionid),state);
-            
-            if(result!="")//error
-              _logger->log(result+" using I2cNetwork");
-          }else{ // message for another slave, so we pass it on
-            String result = addToQueue(address,index,buttonlookup(actionid),state);
-            if(result!="")
-              _logger->log(result);
-          }
-          
-            
-        }else{
-          //Bus fault or slave fault
-          end=true;
-          
-          unsigned long currentTime = millis();
-          transmissionError+=1;
-          if(transmissionError>ERROR_BUS_FAULTS_BEFORE_RESET && transmissionErrorTime+5000<currentTime){
-            _logger->log("I2CNetwork: Transmission Error 2 to slave "+String(slaves[i])+", resetting bus");
-            Wire.begin();
-            byte busStatus = Wire.endTransmission();
-            transmissionError=0;
-            transmissionErrorTime = currentTime;
-          }
-        }
-      } 
+      }
     
     
     }
@@ -283,10 +293,16 @@ String I2CNetwork::processAction(int actionid, int value) {
     return action;
   }
   if(action=="Reset"){
+    _controllers->setConfig(0);//this may be a hack, it should send out the getConfig and get back the config
     _controllers->initialize();
+    if(!master){
+      addToQueue(0, 0, "GetConfig", _name.toInt());
+    }
   }
   if(action=="GetConfig"){
-    //_logger->debug("IC2Network: recieved getconfig");
+    _logger->debug("IC2Network: recieved getconfig for "+String(value));
+    informedSlaves[value] = true;
+    
     addToQueue(value, 0, "ChangeConfig", _controllers->getConfig());
   }
   return "";
