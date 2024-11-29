@@ -26,7 +26,7 @@ DigitalControllerObject::DigitalControllerObject(String name,String type,int pin
     }
   }
   if(doubleTapTime>0)
-    _doubleTapTime = doubleTapTime;
+    _doubleTapDelay = doubleTapTime;
 }
 DigitalControllerObject::DigitalControllerObject(String name,String type,int pin, String remoteAddress,String remoteIndex,int emulateAnalog,int doubleTapTime,I2CNetwork* i2c,Logger* logger){ //remote pin side
    _name = name;
@@ -38,7 +38,7 @@ DigitalControllerObject::DigitalControllerObject(String name,String type,int pin
    _i2c = i2c; 
    _logger = logger;
    if(doubleTapTime>0)
-    _doubleTapTime = doubleTapTime;
+    _doubleTapDelay = doubleTapTime;
 }
 DigitalControllerObject::DigitalControllerObject(String name,String type,String* xboxButtons,int xboxButtonsSize,String* xboxButtonsDoubleTap,int xboxButtonsDoubleTapSize,Logger* logger){//For remote to trigger
   _name = name;

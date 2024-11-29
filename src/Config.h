@@ -10,6 +10,7 @@
 #ifndef Config_h
 #define Config_h
 
+
 // change this to match your SD shield or module;
 // Arduino Ethernet shield: pin 4
 // Adafruit SD shields and modules: pin 10
@@ -31,6 +32,7 @@ class Config {
     Config();
     String setup(Logger* logger, Controllers* controllers, I2CNetwork* i2c);
     String getNetworkName();
+    int getButtonRepeatDelay();
     int getNumberOfSlaves();
     int* getSlaves();
 
@@ -42,6 +44,7 @@ class Config {
     
     
     float version=0;
+    float buttonRepeatDelay=300;
     String networkName="";
     int slaves[MAX_SLAVES];
     int numberOfSlaves=0;
