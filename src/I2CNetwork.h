@@ -7,6 +7,7 @@
 #define QUEUE_SIZE 50
 #define DATA_PACKET 5 //for queue array, 0: i2c address, 1: controller index, 2: button action, 3: state (two bytes)
 #define ERROR_BUS_FAULTS_BEFORE_RESET 200
+#define TIME_TO_FORCE_SLAVE_INFORM 500
 
 class Controllers;
 class Logger;
@@ -37,6 +38,7 @@ class I2CNetwork{
     int _numberOfSlaves;
     int* slaves;
     bool* informedSlaves;
+    unsigned long* informedSlavesTimeSince;
     bool once;
     Logger* _logger;
     Controllers* _controllers;

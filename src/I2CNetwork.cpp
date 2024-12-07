@@ -51,7 +51,8 @@ String I2CNetwork::setup(String networkName, int numberOfSlaves,int* configslave
   once=false;
 
   
-  
+  unsigned long currentTime = millis();
+
   for(int i=0;i<QUEUE_SIZE;i++){
     queueSlots[i]=false;
   }
@@ -72,6 +73,11 @@ String I2CNetwork::setup(String networkName, int numberOfSlaves,int* configslave
     informedSlaves = (bool*)malloc(_numberOfSlaves*sizeof(bool));
     for(int i=0;i<_numberOfSlaves;i++){
       informedSlaves[i] = false;
+    }
+    informedSlavesTimeSince = (int*)malloc(_numberOfSlaves*sizeof(unsigned long));
+    for(int i=0;i<_numberOfSlaves;i++){
+      
+      informedSlavesTimeSince[i] = currentTime;
     }
 
   }else{
@@ -113,7 +119,7 @@ String I2CNetwork::buttonlookup( int i )
 String I2CNetwork::addToQueue(int address,int index,String action,int value){
   
   if(action!=""){
-    //_logger->debug("IC2Network: adding to queue "+String(address)+"-"+String(index)+"-"+action+"-"+String(value));
+    _logger->debug("IC2Network: adding to queue "+String(address)+"-"+String(index)+"-"+action+"-"+String(value));
     int i=0;
     for(;i<QUEUE_SIZE;i++){
       if(!queueSlots[i]){
@@ -137,6 +143,9 @@ String I2CNetwork::addToQueue(int address,int index,String action,int value){
 
 
 void I2CNetwork::performAction(){
+  unsigned long currentTime = millis();
+
+  //first deal with queue and send messages out
   for(int i=0;i<QUEUE_SIZE;i++){
     if(queueSlots[i]){
       
@@ -147,8 +156,8 @@ void I2CNetwork::performAction(){
       //_logger->log("I2CNetwork: found in queue:"+String(address)+", "+String(index)+", "+String(actionid)+", "+String(state));
       if(address==name().toInt() || address==-1){//-1 is how this device references itself, like loopback
         
-        if(address==-1)
-          _logger->log("I2CNetwork: picked up item for negative address: "+String(address)+", "+String(index)+", "+String(actionid)+", "+String(state));
+        // if(address==-1)
+        //   _logger->log("I2CNetwork: picked up item for negative address: "+String(address)+", "+String(index)+", "+String(actionid)+", "+String(state));
         _logger->log("I2CNetwork: picked up item for myself: "+String(address)+", "+String(index)+", "+String(actionid)+", "+String(state));
         String action = processAction(actionid,state);
         if(action == ""){
@@ -164,35 +173,43 @@ void I2CNetwork::performAction(){
       }else{
         if(master){
           //_logger->debug("performAction: "+name()+" sending "+String(address)+"-"+String(index)+"-"+String(actionid)+"-"+String(state));
-          Wire.beginTransmission(queue[i][0]);
-          Wire.write(address);
-          Wire.write(index);
-          Wire.write(actionid);
-          // byte highbyte=(signed char)(state & 0xFF00)>>8; //shift right 8 bits, leaving only the 8 high bits. 
-          // byte lowbyte=(signed char)state & 0xFF; //bitwise AND with 0xFF
-          char highbyte=(queue[i][3] & 0xFF00)>>8; //shift right 8 bits, leaving only the 8 high bits. 
-          char lowbyte=queue[i][3] & 0xFF; //bitwise AND with 0xFF
-          Wire.write(highbyte);
-          Wire.write(lowbyte);
-          byte busStatus = Wire.endTransmission();
-          // if(actionid!=255)
-          //   _logger->debug("I2C raw message 1: "+String(address)+" "+String(index)+" "+String(actionid)+" "+String(state) +" -> "+String(doublebyte_to_binary(state)) +" ["+String(byte_to_binary(highbyte))+","+String(byte_to_binary(lowbyte))+"]");
-          if(busStatus != 0x00){
-            //Bus fault or slave fault
-            //TWCR = 0;
-            unsigned long currentTime = millis();
-            transmissionError+=1;
-            if(transmissionError>ERROR_BUS_FAULTS_BEFORE_RESET && transmissionErrorTime+5000<currentTime){
-              _logger->log("I2CNetwork: Transmission Error 1 to slave "+String(queue[i][0])+", resetting bus");
-              busStatus = Wire.endTransmission();
-              Wire.begin();
-              transmissionError=0;
-              transmissionErrorTime = currentTime;
+          if(informedSlaves[i] || informedSlavesTimeSince[address]+TIME_TO_FORCE_SLAVE_INFORM > currentTime){ // only try to communicate with slave if slave has informed in
+            Wire.beginTransmission(queue[i][0]);
+            Wire.write(address);
+            Wire.write(index);
+            Wire.write(actionid);
+            // byte highbyte=(signed char)(state & 0xFF00)>>8; //shift right 8 bits, leaving only the 8 high bits. 
+            // byte lowbyte=(signed char)state & 0xFF; //bitwise AND with 0xFF
+            char highbyte=(queue[i][3] & 0xFF00)>>8; //shift right 8 bits, leaving only the 8 high bits. 
+            char lowbyte=queue[i][3] & 0xFF; //bitwise AND with 0xFF
+            Wire.write(highbyte);
+            Wire.write(lowbyte);
+            byte busStatus = Wire.endTransmission();
+            // if(actionid!=255)
+            //   _logger->debug("I2C raw message 1: "+String(address)+" "+String(index)+" "+String(actionid)+" "+String(state) +" -> "+String(doublebyte_to_binary(state)) +" ["+String(byte_to_binary(highbyte))+","+String(byte_to_binary(lowbyte))+"]");
+            if(busStatus != 0x00){
+              //Bus fault or slave fault
+              //TWCR = 0;
+              
+              transmissionError+=1;
+              if(transmissionError>ERROR_BUS_FAULTS_BEFORE_RESET && transmissionErrorTime+5000<currentTime){
+                _logger->log("I2CNetwork: Transmission Error 1 to slave "+String(queue[i][0])+", resetting bus");
+                busStatus = Wire.endTransmission();
+                Wire.begin();
+                transmissionError=0;
+                transmissionErrorTime = currentTime;
+                informedSlaves[address]=false;
+                informedSlavesTimeSince[address]=currentTime;
+
+                queueSlots[i]=false; // drop packet if we haven't been able to send it in this amount of time
+              }
+              
+            }else{
+              //_logger->debug("I2C sent message");
+              queueSlots[i]=false;
+              informedSlavesTimeSince[address]=currentTime;
+              informedSlaves[address]=true;
             }
-            
-          }else{
-            //_logger->debug("I2C sent message");
-            queueSlots[i]=false;
           }
         }
       }
@@ -200,10 +217,14 @@ void I2CNetwork::performAction(){
     }
 
   }
+
+  // round robin of the slaves to see if there are any messages that need to be consumed / sent
   if(master){
     for(int i=0;i<_numberOfSlaves;i++){
-      
-      if(informedSlaves[i]){ // only try to communicate with slave if slave has informed in
+      if(informedSlaves[i]==false){
+        _logger->log("I2CNetwork: checking for slave "+String(i)+" status "+String(informedSlaves[i])+" time "+String(informedSlavesTimeSince[i])+" current time "+String(currentTime));
+      }
+      if(informedSlaves[i] || informedSlavesTimeSince[i]+TIME_TO_FORCE_SLAVE_INFORM < currentTime){ // only try to communicate with slave if slave has informed in
         bool end = false;
         while(!end){
           //_logger->debug("I2CNetwork: asking slave "+String(slaves[i]));
@@ -212,6 +233,9 @@ void I2CNetwork::performAction(){
           //_logger->debug("I2CNetwork: asking slave "+String(slaves[i])+" "+String(Wire.available()));
           String response = "";
           if(Wire.available()) {
+            informedSlavesTimeSince[i]=currentTime;
+            informedSlaves[i]=true;
+
             int address = Wire.read();
             int index = Wire.read();
             int actionid = Wire.read();
@@ -238,14 +262,13 @@ void I2CNetwork::performAction(){
               String result = addToQueue(address,index,buttonlookup(actionid),state);
               if(result!="")
                 _logger->log(result);
-            }
-            
+            } 
               
           }else{
             //Bus fault or slave fault
             end=true;
             
-            unsigned long currentTime = millis();
+            
             transmissionError+=1;
             if(transmissionError>ERROR_BUS_FAULTS_BEFORE_RESET && transmissionErrorTime+5000<currentTime){
               _logger->log("I2CNetwork: Transmission Error 2 to slave "+String(slaves[i])+", resetting bus");
@@ -253,6 +276,8 @@ void I2CNetwork::performAction(){
               byte busStatus = Wire.endTransmission();
               transmissionError=0;
               transmissionErrorTime = currentTime;
+              informedSlaves[i]=false;
+              informedSlavesTimeSince[i]=currentTime;
             }
           }
         } 
