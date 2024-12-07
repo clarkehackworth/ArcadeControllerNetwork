@@ -1,0 +1,33 @@
+R""""(
+{
+ "configVersion": "0.5",
+ "deviceId": "0",
+ "controllerProfiles": [
+  {
+   "name": "Standard Arcade Play",
+   "shortcutMapping": [
+    { "name": "reset","shortcut": 0 }
+   ],"config": [
+    { "name": "Start","type": "button","buttonRef": "BUTTON_START","pin": 39,"buttonRefDoubleTap": "BUTTON_LOGO" },
+    { "name": "Back","type": "button","buttonRef": "BUTTON_BACK","pin": 40 },
+    { "name": "Rumble1","type": "rumble","rumbleSize": "right","pin": 12 },
+    { "name": "Rumble2","type": "rumble","rumbleSize": "left","pin": 11,"signal": 1 },
+    { "name": "Up","type": "button","buttonRef": "DPAD_UP","pin": 29 },
+    { "name": "Down","type": "button","buttonRef": "DPAD_DOWN","pin": 30 },
+    { "name": "Right","type": "button","buttonRef": "DPAD_RIGHT","pin": 31 },
+    { "name": "Left","type": "button","buttonRef": "DPAD_LEFT","pin": 32 },
+    { "name": "ButtonX","type": "button","buttonRef": "BUTTON_X","pin": 34 },
+    { "name": "ButtonA","type": "button","buttonRef": "BUTTON_A","pin": 36 },
+    { "name": "ButtonY","type": "button","buttonRef": "BUTTON_Y","pin": 33 },
+    { "name": "ButtonB","type": "button","buttonRef": "BUTTON_B","pin": 35 },
+    { "name": "ButtonLB","type": "button","buttonRef": "BUTTON_LB","pin": 37,"buttonRefDoubleTap": "TRIGGER_LEFT" },
+    { "name": "ButtonRB","type": "button","buttonRef": "BUTTON_RB","pin": 38,"buttonRefDoubleTap": "TRIGGER_RIGHT" }
+   ]
+  }	
+  ],
+ "network": [],
+ "shortcuts": [
+  ["Start-Press","Back-Press","Back-Release"]
+ ]
+}
+)""""
