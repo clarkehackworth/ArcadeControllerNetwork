@@ -185,7 +185,7 @@ String Controllers::performActions(){
     // unsigned long start = millis();
     // _logger->log("Controllers: cotroller "+controller->name());
     int groupid = controller->getGroup(); 
-    int groupState = 0;  //TODO: look up group state
+    int groupState = 0;  //TODO: look up group state, I forget what this feature was supposed to be, and it is not a finished feature. 
     String action = controller->performAction(groupState);
     
     if(action.startsWith("Error")){
