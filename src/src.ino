@@ -8,6 +8,7 @@
 #include <RotaryEncoder.h>
 
 #define LOOP_IDLE 10
+#define PERFORMANCE_CHECK 20 // in milliseconds
 
 I2CNetwork i2c;
 Logger logger;
@@ -55,7 +56,7 @@ void loop() {
   //Serial.print(".");
   // if(currentTiming>1)
   //   logger.log("INFO: Main loop took "+String(currentTiming)+ " milliseconds.");
-  if(currentTiming>20)
+  if(currentTiming>PERFORMANCE_CHECK)
     logger.log("INFO: Main loop took "+String(currentTiming)+ " milliseconds.");
   if(currentTiming<=LOOP_IDLE)
     delay(LOOP_IDLE-currentTiming); //Don't go too fast
