@@ -78,11 +78,11 @@ void ControllerObject::attachInterruptCtx(int interrupt) {
         return;
     }
     if (interrupt == NOT_AN_INTERRUPT) {
-        _logger->log(F("Error: Not an interrupt-capable pin"));
+        _logger->log(F("Error: Not an interrupt-capable pin, check your config"));
         return;
     }
     if (instance_table[interrupt] != nullptr) {
-        _logger->log(F("Error: Multiple instances on the same pin"));
+        _logger->log(F("Error: Multiple instances on the same pin, check your config"));
         return;
     }
     instance_table[interrupt] = this;
