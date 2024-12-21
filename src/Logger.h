@@ -15,6 +15,8 @@ class Logger {
     void setup();
     void log(String data);
     void debug(String data);
+    void error(String data);
+    void flush();
 
   private:  
     const char* filename = "Ardcade_log.txt";

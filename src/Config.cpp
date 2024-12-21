@@ -208,7 +208,7 @@ String Config::setup(Logger* logger, Controllers* controllers, I2CNetwork* i2c) 
           
         }
       }
-      if(type == "joystick" || type == "trigger" || type == "mouse"){
+      if(type == "joystick" || type == "trigger" || type == "rotary"){
         String xboxref = "";
         String axis = "";
         int pin2 = -1;
@@ -231,7 +231,7 @@ String Config::setup(Logger* logger, Controllers* controllers, I2CNetwork* i2c) 
         int deadzone = jsoncontrol["deadzone"].as<int>();
         if(!jsoncontrol.containsKey("deadzone"))
           deadzone = -1;
-        int smoothing = jsoncontrol["smoothing"].as<int>();
+        // int smoothing = jsoncontrol["smoothing"].as<int>();
         int offset = jsoncontrol["offset"].as<int>();
         int invertnum = jsoncontrol["invert"].as<int>();
         bool invert = false;
@@ -272,6 +272,29 @@ String Config::setup(Logger* logger, Controllers* controllers, I2CNetwork* i2c) 
         if(jsoncontrol.containsKey("debugDeadzone"))
           debugDeadzone = jsoncontrol["debugDeadzone"].as<int>();
 
+        int smoothing=-1;
+        if(jsoncontrol.containsKey("smoothing"))
+          smoothing = jsoncontrol["smoothing"].as<int>();
+
+        String adaptiveType=""; 
+        if(jsoncontrol.containsKey("adaptiveType"))
+            adaptiveType = jsoncontrol["adaptiveType"].as<String>();
+
+        int adaptiveCalcMaxValue=-999999;
+        if(jsoncontrol.containsKey("adaptiveCalcMaxValue"))
+          adaptiveCalcMaxValue = jsoncontrol["adaptiveCalcMaxValue"].as<int>();
+
+        int adaptiveCalcMValue=-999999;
+        if(jsoncontrol.containsKey("adaptiveCalcMValue"))
+          adaptiveCalcMValue = jsoncontrol["adaptiveCalcMValue"].as<int>();
+        
+        int adaptiveCalcNValue=-999999;
+        if(jsoncontrol.containsKey("adaptiveCalcNValue"))
+          adaptiveCalcNValue = jsoncontrol["adaptiveCalcNValue"].as<int>();
+
+        int adaptiveCalcCValue=-999999;
+        if(jsoncontrol.containsKey("adaptiveCalcCValue"))
+          adaptiveCalcCValue = jsoncontrol["adaptiveCalcCValue"].as<int>();
 
         if(xboxref!="" && remoteAddress!="null"){ //TODO: check if emulated too
           logger->log("Error: "+name+" has " +xboxref+" and remoteAddress. Cannot have both, either choose xbox or remote.");
@@ -280,18 +303,18 @@ String Config::setup(Logger* logger, Controllers* controllers, I2CNetwork* i2c) 
         
         if(xboxref!="" && pin>0){
           logger->debug("init analog controller std "+String(name) +"-"+String(pin)+"-"+String(xboxref)+"-"+String(axis));
-          controllers->addControllerAnalog(name,type, pin,pin2,xboxref, axis,smoothing,sensitivity, deadzone,offset,invert, rotarySpeed, mouseMode,debugDeadzone);
+          controllers->addControllerAnalog(name,type, pin,pin2,xboxref, axis,smoothing,sensitivity, deadzone,offset,invert, rotarySpeed, mouseMode,debugDeadzone, adaptiveType, adaptiveCalcMaxValue, adaptiveCalcMValue, adaptiveCalcNValue, adaptiveCalcCValue);
           
         }else if(xboxref!="" && pin==0){
           logger->debug("init analog controller xboxref "+String(name) +"-"+String(xboxref)+"-"+String(axis));
-          controllers->addControllerAnalog( name,type,  xboxref,  axis);
+          controllers->addControllerAnalog( name,type,  xboxref,  axis, adaptiveType, adaptiveCalcMaxValue, adaptiveCalcMValue, adaptiveCalcNValue, adaptiveCalcCValue);
           
         }else if((remoteAddress!="null"||emulateDigital>=0) && pin>0){
           String analog_remoteAddress = String(remoteAddress);
           if(analog_remoteAddress=="null")
             analog_remoteAddress=String(networkName);
           logger->debug("init analog controller remote pin "+String(name) +"-"+String(pin)+"-"+String(remoteAddress)+"-"+String(index));
-          controllers->addControllerAnalog( name,type, pin,pin2,axis, smoothing, sensitivity,  deadzone,offset,invert,emulateDigital,index,emulateDigitalMinus,indexMinus, analog_remoteAddress, index,rotarySpeed,mouseMode,debugDeadzone, i2c);
+          controllers->addControllerAnalog( name,type, pin,pin2,axis, smoothing, sensitivity,  deadzone,offset,invert,emulateDigital,index,emulateDigitalMinus,indexMinus, analog_remoteAddress, index,rotarySpeed,mouseMode,debugDeadzone, adaptiveType, adaptiveCalcMaxValue, adaptiveCalcMValue, adaptiveCalcNValue, adaptiveCalcCValue, i2c);
           
         }
       }
@@ -319,6 +342,7 @@ String Config::setup(Logger* logger, Controllers* controllers, I2CNetwork* i2c) 
   logger->log("Config: set "+String(controllers->getNumberOfProfiles()+1)+" profile(s), with controllers of "+controllers->getProfileLengths());
 
   
+  
   return "";
 }
 
@@ -337,5 +361,4 @@ int* Config::getSlaves(){
 int Config::getButtonRepeatDelay(){
   return buttonRepeatDelay;
 }
-
 

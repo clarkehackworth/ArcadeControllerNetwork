@@ -3,10 +3,10 @@
 #include "ControllerObj.h"
 #include "I2CNetwork.h"
 #include "AnalogControllerObj.h"
+#include <math.h>
 
 
-
-AnalogControllerObject::AnalogControllerObject(String name,String type,int pin,int pin2,String xboxref, String axis,int smoothing,int sensitivity, int deadzone, int offset,bool invert,int rotarySpeed,int mouseMode,int debugDeadzone,Logger* logger){//local
+AnalogControllerObject::AnalogControllerObject(String name,String type,int pin,int pin2,String xboxref, String axis,int smoothing,int sensitivity, int deadzone, int offset,bool invert,int rotarySpeed,int mouseMode,int debugDeadzone,String adaptiveType, int adaptiveCalcMaxValue, int adaptiveCalcMValue, int adaptiveCalcNValue, int adaptiveCalcCValue,Logger* logger){//local
   _name=name;
   _type = type;
   _pin = pin;
@@ -28,8 +28,20 @@ AnalogControllerObject::AnalogControllerObject(String name,String type,int pin,i
   if(debugDeadzone==1)
     _debugDeadzone=true;
   _logger = logger;
+
+  if(adaptiveType!="")
+    _adaptiveType=adaptiveType;
+  if(adaptiveCalcMaxValue!=-999999)
+    _adaptiveCalcMaxValue=adaptiveCalcMaxValue;
+  if(adaptiveCalcMValue!=-999999)
+    _adaptiveCalcMValue=adaptiveCalcMValue;
+  if(adaptiveCalcNValue!=-999999)
+    _adaptiveCalcNValue=adaptiveCalcNValue;
+  if(adaptiveCalcCValue!=-999999)
+    _adaptiveCalcCValue=adaptiveCalcCValue;
 }
-AnalogControllerObject::AnalogControllerObject(String name,String type,int pin,int pin2, String axis, int smoothing,int sensitivity, int deadzone, int offset,bool invert,int emulateDigital, int index, int emulateDigitalMinus,int indexMinus,String remoteAddress,String remoteIndex,int rotarySpeed,int mouseMode,int debugDeadzone,I2CNetwork* i2c,Logger* logger){//remote sender
+  
+AnalogControllerObject::AnalogControllerObject(String name,String type,int pin,int pin2, String axis, int smoothing,int sensitivity, int deadzone, int offset,bool invert,int emulateDigital, int index, int emulateDigitalMinus,int indexMinus,String remoteAddress,String remoteIndex,int rotarySpeed,int mouseMode,int debugDeadzone,String adaptiveType, int adaptiveCalcMaxValue, int adaptiveCalcMValue, int adaptiveCalcNValue, int adaptiveCalcCValue,I2CNetwork* i2c,Logger* logger){//remote sender
   _name=name;
   _type=type;
   _pin = pin;
@@ -62,29 +74,53 @@ AnalogControllerObject::AnalogControllerObject(String name,String type,int pin,i
 
   _i2c = i2c; 
   _logger = logger;
+
+  if(adaptiveType!="")
+    _adaptiveType=adaptiveType;
+  if(adaptiveCalcMaxValue!=-999999)
+    _adaptiveCalcMaxValue=adaptiveCalcMaxValue;
+  if(adaptiveCalcMValue!=-999999)
+    _adaptiveCalcMValue=adaptiveCalcMValue;
+  if(adaptiveCalcNValue!=-999999)
+    _adaptiveCalcNValue=adaptiveCalcNValue;
+  if(adaptiveCalcCValue!=-999999)
+    _adaptiveCalcCValue=adaptiveCalcCValue;
 }
-AnalogControllerObject::AnalogControllerObject(String name,String type, String xboxref, String axis,Logger* logger){//remote reciever
+AnalogControllerObject::AnalogControllerObject(String name,String type, String xboxref, String axis,String adaptiveType, int adaptiveCalcMaxValue, int adaptiveCalcMValue, int adaptiveCalcNValue, int adaptiveCalcCValue,Logger* logger){//remote reciever
   _name=name;
   _type=type;
   _xboxref = xboxref;
   _axis = axis;
   _logger = logger;
+
+  if(adaptiveType!="")
+    _adaptiveType=adaptiveType;
+  if(adaptiveCalcMaxValue!=-999999)
+    _adaptiveCalcMaxValue=adaptiveCalcMaxValue;
+  if(adaptiveCalcMValue!=-999999)
+    _adaptiveCalcMValue=adaptiveCalcMValue;
+  if(adaptiveCalcNValue!=-999999)
+    _adaptiveCalcNValue=adaptiveCalcNValue;
+  if(adaptiveCalcCValue!=-999999)
+    _adaptiveCalcCValue=adaptiveCalcCValue;
 }
 
 
 String AnalogControllerObject::performAction(int groupState){
-  //_logger->debug("AnalogControllerObj: performAction");
+  // _logger->debug("AnalogControllerObj: performAction ");
   int state = getState();
+  // _logger->debug("AnalogControllerObj: performAction "+String(state));
   //_logger->debug("AnalogControllerObj: performAction "+String(_name)+"-" +String(state)+" "+String(_pin));
   performImplReturn result = performCalculations(state);
   //_logger->debug("AnalogControllerObj: result "+String(result.inact)+"-" +String(result.value));
   if(result.inact){
-    if(_invert)
-      result.value = AnalogRead_Max - result.value;
-    if(_emulateDigital>=0){ // emulating button
+    // if(_invert) //TODO: fix later
+    //   result.value = AnalogRead_Max - result.value;
+    
+    if(_emulateDigital>=0){ // analog emulating digital button
       return peformEmulateButton(result.value);
       
-    }else{//not emulating button
+    }else{//analog not emulating digital button
       //_logger->debug("AnalogControllerObj: performControllerAction " +String(result.value)+" "+String(_pin));
       return performControllerAction(_xboxref+_axis,result.value);
     }
@@ -93,32 +129,41 @@ String AnalogControllerObject::performAction(int groupState){
 }
 
 String AnalogControllerObject::performControllerAction(String action,int state, int groupState){
-  //emulate joystick
+  //emulate digital joystick/button, press and release
   if(action=="EmulatePress"){
-    int value = (AnalogRead_Max/2.0)+(AnalogRead_Max/2.0)*(state/100.0);
-    value = calcDeadzone(value);
+    // int value = int((AnalogRead_Max/2.0)+float((AnalogRead_Max/2.0)*(state/100.0)));
+    int value = getCenter()+state;
+    
     //_logger->debug("AnalogControllerObj: press controller "+_name+" value: " +String(value));
-    setReadings(value);
-    setState(value);
+    // setReadings(value);
+    // setState(value);
+    adaptiveStart(state);
+    value=adaptiveUpdate(state);
     //_logger->debug("AnalogController: state:"+String(state)+" max:"+String(AnalogRead_Max)+" value:"+String(value));
     return performControllerAction(_xboxref+_axis,value)+"-Press";
   }
   if(action=="EmulateRelease"){
-    int value = (AnalogRead_Max/2.0);
-    value = calcDeadzone(value);
+   
+    int value = getCenter();
+
     //_logger->debug("AnalogControllerObj: release controller "+_name+" value: " +String(value));
-    setReadings(value);
-    setState(value);
+    // setReadings(value);
+    // setState(value);
+    adaptiveStart(value);
+    value=adaptiveUpdate(value);
     return performControllerAction(_xboxref+_axis,value)+"-Release";
   }
 
+  //try to send action to remote
   String result = ControllerObject::performControllerAction(action,state);
+
+  //if not remote, then we need to handle it here
   if(result==""){
-    //_logger->debug("AnalogControllerObj: perform controller action "+_name+" "+action+", value: " +String(state));
-    if(_type=="joystick" || _type=="trigger"){
+    // _logger->debug("AnalogControllerObj: perform controller action "+_name+" "+action+", value: " +String(state));
+    if(_xboxref!="mouse"){
       xbox(action,state);
       return _name;
-    }else if(_type=="mouse"){
+    }else if(_xboxref=="mouse"){
       mouse(action,state);
       return _name;
     }
@@ -151,11 +196,9 @@ void AnalogControllerObject::xbox(String action,int state){
 }
 
 void AnalogControllerObject::mouse(String action,int state){
-  if(_axis!=""){
-    state=CENTER-state;
-  }else{
-    state=255-state;
-  }
+
+  state = getCenter()-state;
+ 
   if(_axis=="X"){
     #ifdef MOUSE_INTERFACE
     Mouse.move(state, 0, 0);
@@ -172,7 +215,59 @@ void AnalogControllerObject::mouse(String action,int state){
 }
 
 performImplReturn AnalogControllerObject::performCalculations(int state){
-  //_logger->debug("AnalogControllerObj: performcalc "+_name+" - "+String(_smoothing));
+  // _logger->debug("AnalogControllerObj: performcalc "+_name+" - "+String(_smoothing));
+  int value = smooth(state);
+  value = adaptiveUpdate(value);
+  value = calcDeadzone(value)+_offset;
+  
+  // _logger->debug("AnalogControllerObj: performcalc value "+_name+" - "+String(value)+ " sensitivity "+String(isPastSensitivityThreshold(value)));
+  unsigned long currentTime = millis();
+  if(isPastSensitivityThreshold(value)){
+    // String axisInfo = "";
+    // if(_axis!="")
+    //   axisInfo = " on "+_axis;
+    //_logger->debug("AnalogControllerObj: controller "+_name+" value"+axisInfo+": " +String(value));
+    //_logger->debug("AnalogControllerObj: performcalc "+_name+" - "+_xboxref+" value"+axisInfo+": " +String(value)+" - "+String(state)+","+String(_average)+","+String(_total)+","+String(_readIndex));
+
+    _prev=value;
+    _lastUpdate = currentTime;
+    return {value,true};
+  }
+  // else if(_mouseMode){ //TODO: replace mouse mode with adaptive back to 0/center
+  //   int targetValue = CENTER;
+  //   if(_axis=="")
+  //     targetValue = 255;
+  //   if(value!=targetValue && (value >= targetValue || value <= targetValue) && _lastUpdate+_mouseModeTimeout<currentTime){
+  //     int newState = value+((targetValue-value)/2);
+  //     newState = calcDeadzone(newState);
+  //     newState = newState+_offset;
+
+  //     _prev=value;
+  //     _lastUpdate = currentTime;
+  //     // setReadings(newState);
+      
+  //     return {newState, true};
+  //   }
+  return {0,false};
+}
+
+bool AnalogControllerObject::isPastSensitivityThreshold(int value){
+  if(_sensitivity<0){//if sensitivity is disabled then just return true
+    return true;
+  }
+  // _logger->debug("AnalogControllerObj: controller "+_name+" sensitivityThreshhold: " +String(value)+" prev "+String(_prev));
+  int diff = value - _prev;
+  // _logger->debug("AnalogControllerObj: controller "+_name+" sensitivityThreshhold: diff " +String(diff)+" sensitivity "+String(_sensitivity));
+  if(diff > _sensitivity || diff < -_sensitivity){
+    return true;
+  }
+  return false;
+}
+
+int AnalogControllerObject::smooth(int state){
+  if(_smoothing<0){//if disabled just return value
+    return state;
+  }
   _total -= _readings[_readIndex];
   _readings[_readIndex] = state;
   _total += _readings[_readIndex];
@@ -181,61 +276,126 @@ performImplReturn AnalogControllerObject::performCalculations(int state){
      _readIndex = 0;
   
   _average = _total / _smoothing;
-  int diff = _average - _prev;
+  return _average;
+}
+
+bool AnalogControllerObject::adaptiveStart(int state){
+  if(_adaptiveType=="None")
+    return false;
+  _logger->debug("AnalogControllerObj: adaptiveStart :" +String(_adaptiveCurrent)+" to "+String(state));
  
-  int value = _average+_offset;
-  value = calcDeadzone(value);
+  _adpativeTime= millis();
+  _adaptiveStart=_adaptiveCurrent;
+  _adaptiveTarget=state;
+  return true;
+}
+
+int AnalogControllerObject::adaptiveUpdate(int state){
   
-  //_logger->debug("AnalogControllerObj: performcalc value "+_name+" - "+String(value));
   unsigned long currentTime = millis();
-  if(diff > _sensitivity || diff < -_sensitivity){
-    String axisInfo = "";
-    if(_axis!="")
-      axisInfo = " on "+_axis;
-    //_logger->debug("AnalogControllerObj: controller "+_name+" value"+axisInfo+": " +String(value));
-    //_logger->debug("AnalogControllerObj: performcalc "+_name+" - "+_xboxref+" value"+axisInfo+": " +String(value)+" - "+String(state)+","+String(_average)+","+String(_total)+","+String(_readIndex));
-    _prev=_average;
-    _lastUpdate = currentTime;
-    return {value,true};
-  }else if(_mouseMode){
-    int targetValue = CENTER;
-    if(_axis=="")
-      targetValue = 255;
-    if(value!=targetValue && (value >= targetValue || value <= targetValue) && _lastUpdate+_mouseModeTimeout<currentTime){
-      int newState = value+((targetValue-value)/2);
-      newState = calcDeadzone(newState);
-      newState = newState+_offset;
-      _lastUpdate = currentTime;
-      setReadings(newState);
-      //_logger->debug("AnalogControllerObj: mouse mode "+String(value)+"->"+String(newState)+" of "+String(targetValue));
-      //return performCalculations(newState);
-      return {newState, true};
-    }
-    return {0,false};
+  if(_adaptiveType=="None"){//if disabled just return value
+    return state;
   }
-  return {0,false};
+
+  int direction=1;
+  if(_adaptiveTarget<_adaptiveStart){
+    direction=-1;
+  }
+
+  // if(state!=_adaptiveCurrent){
+  //   _logger->debug("AnalogControllerObj: adaptiveUpdate "+_name+":1 " +String(state)+" current:"+String(_adaptiveCurrent)+" target: "+String(_adaptiveTarget)+" direction "+String(direction));
+  // }
+
+
+  if(_adaptiveCurrent==_adaptiveTarget)
+    return _adaptiveTarget;
+
+  // _logger->debug("AnalogControllerObj: adaptiveUpdate 2:" +String(state)+" current:"+String(_adaptiveCurrent));
+  int step = abs(_adaptiveTarget-_adaptiveStart);
+  // _logger->debug("AnalogControllerObj: adaptiveUpdate 2.1:" +String(state)+" current:"+String(_adaptiveCurrent)+" step:"+String(step)+" percent:"+String(step/float(getMax())));
+  if(step/float(getMax())<.01){//if state is within percent then just update target
+    _adaptiveCurrent=_adaptiveTarget;
+    return _adaptiveTarget;
+  }
+
+  unsigned long timediff = currentTime - _adpativeTime;
+
+  // _logger->debug("AnalogControllerObj: adaptiveUpdate 3:" +String(state)+" current:"+String(_adaptiveCurrent));
+  
+  float maxValueUpdate = 27305;
+  int updateValue=0;
+  if(_adaptiveType=="line")
+    updateValue=lineCalc(currentTime,timediff,direction);
+  if(_adaptiveType=="squared")
+    updateValue=squareCalc(currentTime,timediff,direction);
+
+  if(_adaptiveCalcMaxValue!=0 && updateValue >=_adaptiveCalcMaxValue)
+    updateValue = _adaptiveCalcMaxValue;
+    
+  _adaptiveCurrent=_adaptiveStart+updateValue;
+
+  if((direction==1 && _adaptiveCurrent>=_adaptiveTarget) || (direction==-1 && _adaptiveCurrent<=_adaptiveTarget)) {
+    _adaptiveCurrent=_adaptiveTarget;
+  }
+  // _adpativeTime=currentTime;
+  
+  // _logger->debug("AnalogControllerObj: adaptiveUpdate "+_name+" 4:" +String(state)+" current:"+String(_adaptiveCurrent));
+
+  return _adaptiveCurrent;
+}
+
+
+int AnalogControllerObject::lineCalc(unsigned long currentTime, unsigned long timediff,int direction ){
+  int n=_adaptiveCalcNValue;//150;
+  int m=_adaptiveCalcMValue;//2;
+  int c=_adaptiveCalcCValue;//0;
+
+  int updatedValue = (float(n)/float(m))*timediff+c;
+
+  updatedValue=updatedValue*direction;
+  
+  return updatedValue;
+}
+
+int AnalogControllerObject::squareCalc(unsigned long currentTime, unsigned long timediff,int direction ){
+  int n=_adaptiveCalcNValue;//1;
+  int m=_adaptiveCalcMValue;//2;
+  int c=_adaptiveCalcCValue;//getMax()/6.0;
+
+  int updatedValue = (n/float(m))*pow(timediff, 2)+c;
+  // _logger->debug("AnalogControllerObj: controller "+_name+" squareCalc: "+String(updatedValue)+" time "+ String(timediff)+" m "+ String(m)+" n "+ String(n));
+  
+  updatedValue=updatedValue*direction;
+  
+  return updatedValue;
 }
 
 String AnalogControllerObject::peformEmulateButton(int state){
+  
+
   int adjustedValue = -1;
   int adjustedRemoteIndex = -1;
   int stateAdjusted =-1;
-  if(_axis==""){
+  if(isTrigger){
     //_logger->debug("AnalogControllerObj: controller emlulated button trigger formula");
-    stateAdjusted = int((float(state)/float(AnalogRead_Max))*100);
+    stateAdjusted = int((float(state)/float(getMax()))*100);
     //_logger->debug("AnalogControllerObj: controller emlated trigger "+String(stateAdjusted)+ " compared to "+String(_emulateDigital)+" - "+String(_xboxEmulatedButtonState));
     adjustedRemoteIndex = _index;
-  }else{
+  }
+  if(isJoystick){
     
-    if(state>=CENTER){
+    if(state>=getCenter()){
       //_logger->debug("AnalogControllerObj: controller emlulated button trigger upper formula");
-      stateAdjusted = int(((float(state)-CENTER)/(float(AnalogRead_Max)/2.0))*100);
+      stateAdjusted = int(((float(state)-getCenter())/(float(getMax())/2.0))*100);
       adjustedRemoteIndex = _indexMinus;
     }else{
       //_logger->debug("AnalogControllerObj: controller emlulated button trigger lower formula");
-      stateAdjusted = 100-int((float(state)/(float(AnalogRead_Max)/2.0))*100);
+      stateAdjusted = 100-int((float(state)/(float(getMax())/2.0))*100);
       adjustedRemoteIndex = _index;
     }
+  }
+  if(isRotary){
+    _logger->error("Error: Rotary not implmented as emulated button, AnalogControllerObj peformEmulateButton "+_name+" " +String(state));
   }
   //_logger->debug("AnalogControllerObj: controller emlulated button "+String(_name)+" - "+String(stateAdjusted)+ " compared to "+String(_emulateDigital)+" - "+String(_xboxEmulatedButtonState));
   if(_xboxEmulatedButtonState && stateAdjusted >_emulateDigital){
@@ -258,30 +418,32 @@ String AnalogControllerObject::peformEmulateButton(int state){
   return "";
 }
 
+
 int AnalogControllerObject::calcDeadzone(int value){
+  
   int _value = value;
   int deadzoneHigh = _deadzone;
   int deadzoneLow = 0;
   if(_axis!=""){//is joystick
-    deadzoneHigh = CENTER+_deadzone;
-    deadzoneLow = CENTER-_deadzone;
+    deadzoneHigh = getCenter()+_deadzone;
+    deadzoneLow = getCenter()-_deadzone;
   }
   String axisInfo = "";
   if(_axis!="")
     axisInfo = " on "+_axis; 
   if(value<deadzoneHigh && value>deadzoneLow){
     if(_debugDeadzone)
-      _logger->log("Debug Deadzone: "+_name+axisInfo+": axis centered in deadzone with value "+String(value)+" of 511 (center)");
-    _value = CENTER;
+      _logger->log("Debug Deadzone: "+_name+axisInfo+": axis centered in deadzone with value "+String(value)+" of center"+String(getCenter()));
+    _value = getCenter();
   }else{
     if(_debugDeadzone)
-      _logger->log("Debug Deadzone: "+_name+axisInfo+": axis not in the deadzone with value "+String(value)+" of 511 (center)");
+      _logger->log("Debug Deadzone: "+_name+axisInfo+": axis not in the deadzone with value "+String(value)+" of center "+String(getCenter()));
   }
   return _value;
 }
 
 int AnalogControllerObject::getState(){
-  if(_pin>=0 && _pin2<0){
+  if(isJoystick || isTrigger){
     if(!attached)
       _pinState = analogRead(_pin);
     // String axisInfo = "";
@@ -289,7 +451,7 @@ int AnalogControllerObject::getState(){
     //   axisInfo = " on "+_axis; 
     // _logger->debug("AnalogControllerObj: controller "+_name+axisInfo+" reading "+String(_pinState));
     return _pinState;
-  }else if(_pin>=0 && _pin2>=0){
+  }else if(isRotary){
 
     if(!attached)
       rotaryEncoder->tick();
@@ -303,8 +465,8 @@ int AnalogControllerObject::getState(){
       
       if(rotaryPosition<0)
         rotaryPosition=0;
-      if(rotaryPosition>AnalogRead_Max)
-        rotaryPosition=AnalogRead_Max;
+      if(rotaryPosition>ROTARY_ANALOG_MAX)
+        rotaryPosition=ROTARY_ANALOG_MAX;
       if(rotaryPosition != rotaryPrevPosition){
 
         //_logger->debug("AnalogControllerObj: controller "+_name+" rotary read "+String(position)+" "+String(dir)+" "+String(rpm)+" - "+String(rotaryPosition));
@@ -324,10 +486,23 @@ void AnalogControllerObject::initialize(){
   ControllerObject::initialize();
   _logger->debug("Initialize "+String(_name)+" on "+String(_pin)+","+String(_pin2)+", smoothing "+String(_smoothing));
   
-  if(_pin>=0 && _pin2<0){
-    pinMode(_pin,INPUT);
-    //attachInterruptCtx(digitalPinToInterrupt(_pin)); not a digital input
-    
+
+  
+
+  
+  if(_type=="joystick")
+    isJoystick=true;
+  if(_type=="trigger")
+    isTrigger=true;
+  if(_type=="rotarys")
+    isRotary = true;
+  
+
+  if(isJoystick){
+    if(_pin>=0)
+      pinMode(_pin,INPUT);
+    //attachInterruptCtx(digitalPinToInterrupt(_pin)); not a digital input 
+
     //defaults for joysticks
     if(_smoothing==-1)
       _smoothing = 6; //higher is more smoothing, but more latency
@@ -335,14 +510,61 @@ void AnalogControllerObject::initialize(){
       _sensitivity = 3; //higher is less sensitive
     if(_deadzone==-1)
       _deadzone = 8;
-  } else if(_pin>=0 && _pin2>=0){
-    _mouseMode = true;//TODO: for now
-    pinMode(_pin,INPUT);
-    pinMode(_pin2,INPUT);
-    rotaryEncoder = new RotaryEncoder(_pin, _pin2, RotaryEncoder::LatchMode::TWO03);
-    attachInterruptCtx(digitalPinToInterrupt(_pin));
-    attached = false; // we need to attach two pins
-    attachInterruptCtx(digitalPinToInterrupt(_pin2));
+
+    if(_adaptiveType=="")
+      _adaptiveType="line";
+
+    if(_adaptiveType=="line"){
+      if(_adaptiveCalcMaxValue==-999999)
+        _adaptiveCalcMaxValue=0;
+      if(_adaptiveCalcMValue==-999999)
+        _adaptiveCalcMValue=1;
+      if(_adaptiveCalcNValue==-999999)
+        _adaptiveCalcNValue=300;
+      if(_adaptiveCalcCValue==-999999)
+        _adaptiveCalcCValue=0;
+    }
+   
+    if(_adaptiveType=="squared"){
+      if(_adaptiveCalcMaxValue==-999999)
+        _adaptiveCalcMaxValue=27305;
+      if(_adaptiveCalcMValue==-999999)
+        _adaptiveCalcMValue=2;
+      if(_adaptiveCalcNValue==-999999)
+        _adaptiveCalcNValue=1;
+      if(_adaptiveCalcCValue==-999999)
+        _adaptiveCalcCValue=5461;
+    }
+    
+
+  }else if(isTrigger){
+    if(_pin>=0)
+      pinMode(_pin,INPUT);
+
+    //defaults for triggers
+    if(_smoothing==-1)
+      _smoothing = 6; //higher is more smoothing, but more latency
+    if(_sensitivity==-1)
+      _sensitivity = 3; //higher is less sensitive
+    if(_deadzone==-1)
+      _deadzone = 8;
+    
+
+  }else if(isRotary){
+    _mouseMode = true;
+    if(_pin>=0)
+      pinMode(_pin,INPUT);
+    if(_pin2>=0)
+      pinMode(_pin2,INPUT);
+    
+    if(_pin>=0 && _pin2>=0)
+      rotaryEncoder = new RotaryEncoder(_pin, _pin2, RotaryEncoder::LatchMode::TWO03);
+    if(_pin>=0){
+      attachInterruptCtx(digitalPinToInterrupt(_pin));
+      attached = false; // we need to attach two pins
+    }
+    if(_pin2>=0)
+      attachInterruptCtx(digitalPinToInterrupt(_pin2));
 
     //defaults for tackball
     if(_smoothing==-1)
@@ -358,28 +580,16 @@ void AnalogControllerObject::initialize(){
       _mouseMode=false;
     }
 
-  }else{
-    //defaults for items with no pins defined
-    if(_smoothing==-1)
-      _smoothing = 6; //higher is more smoothing, but more latency
-    if(_sensitivity==-1)
-      _sensitivity = 3; //higher is less sensitive
-    if(_deadzone==-1)
-      _deadzone = 8;
+    
   }
-  _readings = (int*)malloc(_smoothing*sizeof(int));
+  if(_smoothing>=1)
+    _readings = (int*)malloc(_smoothing*sizeof(int));
   
-  
-  if(_axis!=""){
-    XInput.setRange(xboxlookup(_xboxref), 0, AnalogRead_Max-1);//if joystick set range based on max of read analog. 
-    setReadings(CENTER);
-    performControllerAction(_xboxref+_axis,CENTER);
-  }else{
-    XInput.setTriggerRange(0, 255);//should be default, but lets set it
-    setReadings(255);
-    performControllerAction(_xboxref,255);
-  }
-
+  XInput.setRange(xboxlookup(_xboxref), getMin(), getMax());
+  setReadings(getCenter());
+  setState(getCenter());
+  performControllerAction(_xboxref+_axis,getCenter());
+  _logger->debug("Initialized "+String(_name)+" on "+String(_pin)+","+String(_pin2)+", smoothing "+String(_smoothing));
 }
 
 void AnalogControllerObject::deinitialize(){
@@ -405,13 +615,51 @@ bool AnalogControllerObject::isDigital(){
 }
 
 void AnalogControllerObject::setReadings(int value){
-  //_logger->debug("AnalogControlObj: set reading "+String(value));
-  for(int i=0;i<_smoothing;i++){
-    _readings[i] = value;
-  }
-  _total = value *(_smoothing);
-  _prev = value;
+
+  // _logger->debug("AnalogControlObj: set reading "+String(value));
   _pinState = value;
-  rotaryPosition=value;
-  rotaryPrevPosition=value;
+  
+  if(_smoothing>=1){
+    for(int i=0;i<_smoothing;i++){
+      _readings[i] = value;
+    }
+    _total = value *(_smoothing);
+    _prev = value;
+    rotaryPosition=value;
+    rotaryPrevPosition=value;
+  }
 }
+
+int AnalogControllerObject::getCenter(){
+  int center = 0;
+  if(isJoystick)
+    center = JOYSTICK_ANALOG_CENTER;
+  if(isRotary)
+    center=ROTARY_ANALOG_CENTER;
+  if(isTrigger)
+    center=TRIGGER_ANALOG_MAX;
+  return center;
+}
+
+int AnalogControllerObject::getMin(){
+  int middle = 0;
+  if(isJoystick)
+    middle = JOYSTICK_ANALOG_MIN;
+  if(isRotary)
+    middle=ROTARY_ANALOG_MIN;
+  if(isTrigger)
+    middle=TRIGGER_ANALOG_MIN;
+  return middle;
+}
+
+int AnalogControllerObject::getMax(){
+  int max = 0;
+  if(isJoystick)
+    max = JOYSTICK_ANALOG_MAX;
+  if(isRotary)
+    max=ROTARY_ANALOG_MAX;
+  if(isTrigger)
+    max=TRIGGER_ANALOG_MAX;
+  return max;
+}
+

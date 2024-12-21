@@ -112,13 +112,13 @@ String DigitalControllerObject::performAction(int groupState){//group state not 
         return performControllerAction("EmulateRelease",_emulateAnalog);
       }
       //unsigned long currentTime = millis();
-      if(!_emulateLongPressed && currentTime >= (_emulateTime+Emulate_Double_Time)){
-        _emulateLongPressed=true;
-        int value = 100;
-        if(_emulateAnalog<0)
-          value=-100;
-        return performControllerAction("EmulatePress",value);
-      }
+      // if(!_emulateLongPressed && currentTime >= (_emulateTime+Emulate_Double_Time)){
+      //   _emulateLongPressed=true;
+      //   int value = 100;
+      //   if(_emulateAnalog<0)
+      //     value=-100;
+      //   return performControllerAction("EmulatePress",value);
+      // }
     }else{
       //xbox key not in pressed state 
       if(state==_test){ // hw key pressed

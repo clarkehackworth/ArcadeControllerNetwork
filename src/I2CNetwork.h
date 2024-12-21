@@ -7,7 +7,7 @@
 #define QUEUE_SIZE 50
 #define DATA_PACKET 5 //for queue array, 0: i2c address, 1: controller index, 2: button action, 3: state (two bytes)
 #define ERROR_BUS_FAULTS_BEFORE_RESET 200
-#define TIME_TO_FORCE_SLAVE_INFORM 500
+#define TIME_TO_FORCE_SLAVE_INFORM 200
 
 class Controllers;
 class Logger;
@@ -49,6 +49,8 @@ class I2CNetwork{
     bool queueSlots[QUEUE_SIZE];
 
     bool initialized=false;
+
+    String _prevQueuedItem="";
 
 };
 #endif

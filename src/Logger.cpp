@@ -11,10 +11,11 @@ void Logger::setup() {
     return;
   } else {
     enable = true; 
-    
+    dataFile = SD.open(filename, FILE_WRITE);
+    log("SD Card Initialized");
   }
 
-  log("SD Card Initialized");
+  
 }
 
 void Logger::log(String data) {
@@ -23,13 +24,31 @@ void Logger::log(String data) {
     //Serial.print("Writing ");
     //Serial.println(data);
     
-    dataFile = SD.open(filename, FILE_WRITE);
+    // dataFile = SD.open(filename, FILE_WRITE);
     dataFile.println("[+] "+data);
-    dataFile.close();
+    dataFile.flush();
+    // dataFile.close();
     //Serial.println("log written");
   }
   if(LOG_TO_SERIAL){
     Serial.println("[+] "+data);
+  }
+}
+
+void Logger::error(String data) {
+  
+  if(enable && LOG_TO_SD){
+    //Serial.print("Writing ");
+    //Serial.println(data);
+    
+    // dataFile = SD.open(filename, FILE_WRITE);
+    dataFile.println("[#] "+data);
+    dataFile.flush();
+    // dataFile.close();
+    //Serial.println("log written");
+  }
+  if(LOG_TO_SERIAL){
+    Serial.println("[#] "+data);
   }
 }
 
@@ -38,9 +57,10 @@ void Logger::debug(String data) {
     if(enable && LOG_TO_SD){
       //Serial.print("Writing ");
       //Serial.println(data);
-      dataFile = SD.open(filename, FILE_WRITE);
+      // dataFile = SD.open(filename, FILE_WRITE);
       dataFile.println("[d] "+data);
-      dataFile.close();
+      dataFile.flush();
+      // dataFile.close();
       //Serial.println("log written");
     }
     if(LOG_TO_SERIAL){
@@ -49,3 +69,8 @@ void Logger::debug(String data) {
   }
 }
 
+void Logger::flush() {
+  if(enable && LOG_TO_SD){
+    dataFile.flush();
+  }
+}

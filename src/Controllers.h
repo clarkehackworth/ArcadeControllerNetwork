@@ -35,9 +35,9 @@ class Controllers {
     void addControllerDigital(String name,String type, int pin,String* xboxButtons,int xboxButtonsSize,String* xboxButtonsDoubleTap,int doubleTapTime,int xboxButtonsDoubleTapSize);
     void addControllerDigital(String name,String type,String* xboxButtons,int xboxButtonsSize,String* xboxButtonsDoubleTap,int xboxButtonsDoubleTapSize);
     void addControllerDigital(String name,String type,int pin,String remoteAddress,int remoteIndex,int emulateAnalog,int doubleTapTime,I2CNetwork* i2c);
-    void addControllerAnalog(String name, String type,int pin,int pin2,String xboxref, String axis,int smoothing,int sensitivity, int deadzone, int offset,bool invert,int rotarySpeed,int mouseMode,int debugDeadzone);
-    void addControllerAnalog(String name, String type,String xboxref, String axis);
-    void addControllerAnalog(String name,String type,int pin,int pin2, String axis,int smoothing,int sensitivity, int deadzone, int offset,bool invert,int emulateDigital, int index, int emulateDigitalMinus,int indexMinus,String remoteAddress,String remoteIndex,int rotarySpeed,int mouseMode,int debugDeadzone,I2CNetwork* i2c);
+    void addControllerAnalog(String name, String type,int pin,int pin2,String xboxref, String axis,int smoothing,int sensitivity, int deadzone, int offset,bool invert,int rotarySpeed,int mouseMode,int debugDeadzone,String adaptiveType, int adaptiveCalcMaxValue, int adaptiveCalcMValue, int adaptiveCalcNValue, int adaptiveCalcCValue);
+    void addControllerAnalog(String name, String type,String xboxref, String axis,String adaptiveType, int adaptiveCalcMaxValue, int adaptiveCalcMValue, int adaptiveCalcNValue, int adaptiveCalcCValue);
+    void addControllerAnalog(String name,String type,int pin,int pin2, String axis,int smoothing,int sensitivity, int deadzone, int offset,bool invert,int emulateDigital, int index, int emulateDigitalMinus,int indexMinus,String remoteAddress,String remoteIndex,int rotarySpeed,int mouseMode,int debugDeadzone, String adaptiveType, int adaptiveCalcMaxValue, int adaptiveCalcMValue, int adaptiveCalcNValue, int adaptiveCalcCValue,I2CNetwork* i2c);
     void addRumble(String name,String type,int pin, String size,int scale,int signal);
     void addRumble(String name,String type, String size,String remoteAddress,int index);
     void addRumble(String name,String type,int pin,int scale,int signal);

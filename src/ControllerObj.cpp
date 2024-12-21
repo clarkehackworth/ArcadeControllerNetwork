@@ -17,8 +17,13 @@ String ControllerObject::performAction(int groupState=0){
 String ControllerObject::performControllerAction(String action,int state, int groupState=0){
   //_logger->debug("Perform action "+String(_name) +" action "+String(action)+" state "+String(state));  
   if(_remoteAddress>=0){
-    
+    unsigned long start = millis();
     String result = _i2c->addToQueue(_remoteAddress,_remoteIndex,action,state);
+
+    unsigned long end = millis();
+    if(start-end>1 )
+      _logger->debug("ControllerObject: "+name()+" adding to queue, action "+String(action)+" on "+String(_remoteAddress)+" took " +String(end-start));
+
     if(result!=""){
       _logger->log(result);  
     }

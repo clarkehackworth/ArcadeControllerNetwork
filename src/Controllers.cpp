@@ -14,6 +14,23 @@ String Controllers::Setup(I2CNetwork* i2c,Logger* logger){
   _i2c = i2c;
   _logger = logger;  
   profilesCurrent = 0;
+  if (SD.begin(chipSelect)) {
+    if (SD.exists("currentProfile.txt")) {
+      File dataFile = SD.open("currentProfile.txt");
+      String profileStr="";
+      char character;
+      while (dataFile.available()) {
+        character = dataFile.read();
+        if (character != 10 && character !=13) {
+          profileStr+=character;
+        }
+      }
+      // Serial.println("Controllers Setup: read "+String(profileStr)+" -> "+String(profileStr.toInt()));
+      profilesCurrent=profileStr.toInt();
+      // close the file:
+      dataFile.close();
+    }    
+  }
   return "";    
 }
 
@@ -65,19 +82,19 @@ void Controllers::addControllerDigital(String name,String type,int pin,String re
   configLengths[profilesSize]=configLengths[profilesSize]+1;
 }
 
-void Controllers::addControllerAnalog(String name,String type, int pin,int pin2,String xboxref, String axis,int smoothing,int sensitivity, int deadzone, int offset,bool invert,int rotarySpeed, int mouseMode,int debugDeadzone){
+void Controllers::addControllerAnalog(String name,String type, int pin,int pin2,String xboxref, String axis,int smoothing,int sensitivity, int deadzone, int offset,bool invert,int rotarySpeed, int mouseMode,int debugDeadzone,String adaptiveType, int adaptiveCalcMaxValue, int adaptiveCalcMValue, int adaptiveCalcNValue, int adaptiveCalcCValue){
   _logger->debug("adding analog std controller "+String(name) +"-"+String(pin)+"-"+xboxref+"-"+axis+"-"+String(smoothing)+"-"+String(sensitivity)+"-"+String(deadzone));
-  configs[profilesSize][configLengths[profilesSize]]= new AnalogControllerObject(name,type,pin,pin2,xboxref,axis,smoothing,sensitivity, deadzone,offset,invert,rotarySpeed, mouseMode,debugDeadzone,_logger);
+  configs[profilesSize][configLengths[profilesSize]]= new AnalogControllerObject(name,type,pin,pin2,xboxref,axis,smoothing,sensitivity, deadzone,offset,invert,rotarySpeed, mouseMode,debugDeadzone, adaptiveType, adaptiveCalcMaxValue, adaptiveCalcMValue, adaptiveCalcNValue, adaptiveCalcCValue,_logger);
   configLengths[profilesSize]=configLengths[profilesSize]+1;
 }
-void Controllers::addControllerAnalog(String name,String type, String xboxref, String axis){
+void Controllers::addControllerAnalog(String name,String type, String xboxref, String axis,String adaptiveType, int adaptiveCalcMaxValue, int adaptiveCalcMValue, int adaptiveCalcNValue, int adaptiveCalcCValue){
   _logger->debug("adding analog reciever controller "+String(name) +"-"+String(xboxref)+"-"+String(axis));
-  configs[profilesSize][configLengths[profilesSize]]= new AnalogControllerObject( name,type,  xboxref,  axis, _logger);
+  configs[profilesSize][configLengths[profilesSize]]= new AnalogControllerObject( name,type,  xboxref,  axis, adaptiveType, adaptiveCalcMaxValue, adaptiveCalcMValue, adaptiveCalcNValue, adaptiveCalcCValue, _logger);
   configLengths[profilesSize]=configLengths[profilesSize]+1;
 }
-void Controllers::addControllerAnalog(String name,String type,int pin, int pin2, String axis,int smoothing,int sensitivity, int deadzone, int offset,bool invert,int emulateDigital, int index, int emulateDigitalMinus,int indexMinus,String remoteAddress,String remoteIndex,int rotarySpeed, int mouseMode,int debugDeadzone,I2CNetwork* i2c){
+void Controllers::addControllerAnalog(String name,String type,int pin, int pin2, String axis,int smoothing,int sensitivity, int deadzone, int offset,bool invert,int emulateDigital, int index, int emulateDigitalMinus,int indexMinus,String remoteAddress,String remoteIndex,int rotarySpeed, int mouseMode,int debugDeadzone,String adaptiveType, int adaptiveCalcMaxValue, int adaptiveCalcMValue, int adaptiveCalcNValue, int adaptiveCalcCValue,I2CNetwork* i2c){
   _logger->debug("adding analog remote pin controller "+String(name) +"-"+String(pin)+"-"+String(remoteAddress)+"-"+String(remoteIndex)+"-"+String(smoothing)+"-"+String(sensitivity)+"-"+String(deadzone));
-  configs[profilesSize][configLengths[profilesSize]]= new AnalogControllerObject( name,type, pin, pin2, axis,  smoothing, sensitivity,  deadzone, offset,invert,emulateDigital,index,emulateDigitalMinus,indexMinus, remoteAddress, remoteIndex,rotarySpeed, mouseMode,debugDeadzone, i2c,_logger);
+  configs[profilesSize][configLengths[profilesSize]]= new AnalogControllerObject( name,type, pin, pin2, axis,  smoothing, sensitivity,  deadzone, offset,invert,emulateDigital,index,emulateDigitalMinus,indexMinus, remoteAddress, remoteIndex,rotarySpeed, mouseMode,debugDeadzone, adaptiveType, adaptiveCalcMaxValue, adaptiveCalcMValue, adaptiveCalcNValue, adaptiveCalcCValue, i2c,_logger);
   configLengths[profilesSize]=configLengths[profilesSize]+1;
 }
 
@@ -140,6 +157,7 @@ ControllerObject* Controllers::nextController(int profile) {
 
 void Controllers::initialize(){
   //_logger->log("Initializing controllers profile size "+String(profilesSize));
+
   clearXInputs();
   XInput.begin();
   XInput.setAutoSend(false);
@@ -157,7 +175,21 @@ void Controllers::initialize(){
   }
 }
 
-void Controllers::initializeProfile(int profile){
+void Controllers::initializeProfile(int profile)  
+
+  if(profile>profilesSize)
+    profile=0;
+
+   if (SD.begin(chipSelect)) {
+    if (SD.exists("currentProfile.txt")) 
+      SD.remove("currentProfile.txt");
+    
+    File dataFile = SD.open("currentProfile.txt", FILE_WRITE);
+    
+    dataFile.println(String(profile));
+    dataFile.close();
+  }
+
   profilesCurrent = profile;
   _logger->log("Initializing controllers with profile "+String(profilesCurrent));
   ControllerObject* controller = startControllerList();
@@ -182,11 +214,14 @@ void Controllers::deinitializeProfile(int profile){
 String Controllers::performActions(){
   ControllerObject* controller = startControllerList();
   while(controller!=NULL){
-    // unsigned long start = millis();
+    unsigned long start = millis();
     // _logger->log("Controllers: cotroller "+controller->name());
     int groupid = controller->getGroup(); 
     int groupState = 0;  //TODO: look up group state, I forget what this feature was supposed to be, and it is not a finished feature. 
     String action = controller->performAction(groupState);
+    unsigned long end = millis();
+    if(end-start>1)
+      _logger->debug("Controllers: "+controller->name()+" action "+String(action)+" took " +String(end-start));
     
     if(action.startsWith("Error")){
       _logger->log("Controllers: detectected "+controller->name()+" in an invalid state. " +action);
@@ -203,8 +238,13 @@ String Controllers::performActions(){
 String Controllers::performActionByIndex(int index,String action,int state){
   ControllerObject* controllerobj = getControllerByIndex(index);
   if(controllerobj!=NULL){
+    unsigned long start = millis();
     controllerobj->setState(state);//we need to set the state of the pin from remote system
     String actionid = controllerobj->performControllerAction(action,state);
+    unsigned long end = millis();
+    if(end-start>1)
+      _logger->debug("Controllers: "+controllerobj->name()+" by index "+String(index)+" action "+String(actionid)+" took " +String(end-start));
+
     if(action.startsWith("Error")){
       _logger->log("Controllers: "+controllerobj->name()+" "+action);
     }else{
@@ -307,13 +347,15 @@ void Controllers::previousConfig(){
 }
 
 void Controllers::setConfig(int profileId){
-  profilesCurrent = profileId;
-  if(profilesCurrent>profilesSize)
-    profilesCurrent=0;
-  if(profilesCurrent<0)
-    profilesCurrent=profilesSize;
-  controllerCurrent=-1;
-  initialize();
+  if(profileId!=profilesCurrent){
+    profilesCurrent = profileId;
+    if(profilesCurrent>profilesSize)
+      profilesCurrent=0;
+    if(profilesCurrent<0)
+      profilesCurrent=profilesSize;
+    controllerCurrent=-1;
+    initialize();
+  }
 }
 
 String Controllers::getProfileLengths(){

@@ -49,15 +49,21 @@ void setup() {
 void loop() {
   
   unsigned long start = millis();
+  // Serial.print("1");
   controllers.performActions();
+  // Serial.print("2");
   i2c.performAction();
+  // Serial.print("3");
   XInput.send();
   unsigned long currentTiming = millis()-start;
-  //Serial.print(".");
+  // Serial.print(".");
   // if(currentTiming>1)
   //   logger.log("INFO: Main loop took "+String(currentTiming)+ " milliseconds.");
   if(currentTiming>PERFORMANCE_CHECK)
     logger.log("INFO: Main loop took "+String(currentTiming)+ " milliseconds.");
-  if(currentTiming<=LOOP_IDLE)
-    delay(LOOP_IDLE-currentTiming); //Don't go too fast
+  if(currentTiming<=LOOP_IDLE){
+    logger.flush();
+    delay(LOOP_IDLE-(millis()-start)); //Don't go too fast
+  }
+    
 }

@@ -49,6 +49,5 @@ class Config {
     int slaves[MAX_SLAVES];
     int numberOfSlaves=0;
     bool i2cSetup = false;
-
 };
 #endif
