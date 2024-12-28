@@ -2,6 +2,7 @@
 #include "DigitalControllerObj.h"
 #include "AnalogControllerObj.h"
 #include "RumbleObj.h"
+#include "IRCameraControllerObj.h"
 #include "Controllers.h"
 #include "I2CNetwork.h"
 
@@ -130,6 +131,11 @@ void Controllers::addRumble(String name,String type,int pin,int scale,int signal
   configLengths[profilesSize]=configLengths[profilesSize]+1;
 }
 
+void Controllers::addCamera(){
+  configs[profilesSize][configLengths[profilesSize]] = new IRCameraControllerObject(_logger);
+  configLengths[profilesSize]=configLengths[profilesSize]+1;
+}
+
 ControllerObject* Controllers::getControllerByIndex(int index) {
   if(index>configLengths[profilesCurrent]){
     _logger->log("Error: index "+String(index)+" out of range for config "+String(profilesCurrent));
@@ -175,7 +181,7 @@ void Controllers::initialize(){
   }
 }
 
-void Controllers::initializeProfile(int profile)  
+void Controllers::initializeProfile(int profile){  
 
   if(profile>profilesSize)
     profile=0;

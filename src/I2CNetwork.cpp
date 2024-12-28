@@ -81,7 +81,7 @@ String I2CNetwork::setup(String networkName, int numberOfSlaves,int* configslave
       addToQueue(slaves[i],0,"Reset",-1);
     }
 
-  }else{
+  }else if(_name.toInt()>=1){
     enable=true;
     master=false;
     addToQueue(0, 0, "GetConfig", _name.toInt());

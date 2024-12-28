@@ -1,6 +1,7 @@
 #include <XInput.h>
 #include "ControllerObj.h"
 #include "DigitalControllerObj.h"
+// #include "IRCameraControllerObj.h"
 
 # define MAX_CONFIGS 6
 # define MAX_CONTROLS 30 //per config
@@ -41,6 +42,7 @@ class Controllers {
     void addRumble(String name,String type,int pin, String size,int scale,int signal);
     void addRumble(String name,String type, String size,String remoteAddress,int index);
     void addRumble(String name,String type,int pin,int scale,int signal);
+    void addCamera();
 
     String performActions();
     String performActionByIndex(int index,String action,int state);
