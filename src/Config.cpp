@@ -215,7 +215,7 @@ String Config::setup(Logger* logger, Controllers* controllers, I2CNetwork* i2c) 
         
         if(jsoncontrol.containsKey("pin2"))
           pin2 = jsoncontrol["pin2"].as<int>();
-        if(type == "joystick"){
+        if(type == "joystick" || type == "rotary"){
           if(jsoncontrol.containsKey("joystickRef"))
             xboxref = jsoncontrol["joystickRef"].as<String>();
           if(jsoncontrol.containsKey("axis"))
@@ -300,9 +300,10 @@ String Config::setup(Logger* logger, Controllers* controllers, I2CNetwork* i2c) 
           logger->log("Error: "+name+" has " +xboxref+" and remoteAddress. Cannot have both, either choose xbox or remote.");
           continue;
         }
-        
+
+        // logger->debug("try init analog controller std "+String(name) +"-"+String(pin)+"-"+String(pin2)+"-"+String(xboxref)+"-"+String(axis));
         if(xboxref!="" && pin>0){
-          logger->debug("init analog controller std "+String(name) +"-"+String(pin)+"-"+String(xboxref)+"-"+String(axis));
+          logger->debug("init analog controller std "+String(name) +"-"+String(pin)+"-"+String(pin2)+"-"+String(xboxref)+"-"+String(axis));
           controllers->addControllerAnalog(name,type, pin,pin2,xboxref, axis,smoothing,sensitivity, deadzone,offset,invert, rotarySpeed, mouseMode,debugDeadzone, adaptiveType, adaptiveCalcMaxValue, adaptiveCalcMValue, adaptiveCalcNValue, adaptiveCalcCValue);
           
         }else if(xboxref!="" && pin==0){
@@ -313,7 +314,7 @@ String Config::setup(Logger* logger, Controllers* controllers, I2CNetwork* i2c) 
           String analog_remoteAddress = String(remoteAddress);
           if(analog_remoteAddress=="null")
             analog_remoteAddress=String(networkName);
-          logger->debug("init analog controller remote pin "+String(name) +"-"+String(pin)+"-"+String(remoteAddress)+"-"+String(index));
+          logger->debug("init analog controller remote pin "+String(name) +"-"+String(pin)+"-"+String(pin2)+"-"+String(remoteAddress)+"-"+String(index));
           controllers->addControllerAnalog( name,type, pin,pin2,axis, smoothing, sensitivity,  deadzone,offset,invert,emulateDigital,index,emulateDigitalMinus,indexMinus, analog_remoteAddress, index,rotarySpeed,mouseMode,debugDeadzone, adaptiveType, adaptiveCalcMaxValue, adaptiveCalcMValue, adaptiveCalcNValue, adaptiveCalcCValue, i2c);
           
         }
@@ -334,6 +335,10 @@ String Config::setup(Logger* logger, Controllers* controllers, I2CNetwork* i2c) 
         }else if(pin>=0){
           controllers->addRumble(name,type,pin,scale,signal);
         }
+      }
+
+      if(type == "infaredCamera"){
+        controllers->addCamera();
       }
       
     }

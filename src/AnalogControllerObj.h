@@ -16,8 +16,8 @@
 #define TRIGGER_ANALOG_MIN 0
 #define TRIGGER_ANALOG_MAX 255
 
-#define ROTARY_ANALOG_MIN 0
-#define ROTARY_ANALOG_CENTER 511
+#define ROTARY_ANALOG_MIN -1024
+#define ROTARY_ANALOG_CENTER 0
 #define ROTARY_ANALOG_MAX 1023// 10-bit ADC
 
 
@@ -62,6 +62,7 @@ class AnalogControllerObject : public ControllerObject{
     void mouse(String action,int state);
     int adaptiveUpdate(int state);
     bool adaptiveStart(int state);
+    void adaptiveStop();
     int lineCalc(unsigned long currentTime, unsigned long timediff,int direction);
     int squareCalc(unsigned long currentTime, unsigned long timediff,int direction );
 
@@ -90,7 +91,8 @@ class AnalogControllerObject : public ControllerObject{
 
   //adaptive movement 
   String _adaptiveType="";
-  unsigned long  _adpativeTime = 0; 
+  unsigned long  _adpativeTime = 0;
+  bool _adaptiveRunning = false; 
   int _adaptiveCurrent = 0; //TODO: need to set appropriate in constructors for full rand vs half range
   int _adaptiveTarget = 0;
   int _adaptiveStart = 0;
