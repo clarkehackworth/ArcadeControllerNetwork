@@ -226,7 +226,7 @@ String Controllers::performActions(){
     int groupState = 0;  //TODO: look up group state, I forget what this feature was supposed to be, and it is not a finished feature. 
     String action = controller->performAction(groupState);
     unsigned long end = millis();
-    if(end-start>1)
+    if(end-start>2)
       _logger->debug("Controllers: "+controller->name()+" action "+String(action)+" took " +String(end-start));
     
     if(action.startsWith("Error")){
@@ -248,7 +248,7 @@ String Controllers::performActionByIndex(int index,String action,int state){
     controllerobj->setState(state);//we need to set the state of the pin from remote system
     String actionid = controllerobj->performControllerAction(action,state);
     unsigned long end = millis();
-    if(end-start>1)
+    if(end-start>2)
       _logger->debug("Controllers: "+controllerobj->name()+" by index "+String(index)+" action "+String(actionid)+" took " +String(end-start));
 
     if(action.startsWith("Error")){
