@@ -62,7 +62,7 @@ class AnalogControllerObject : public ControllerObject{
     void mouse(String action,int state);
     int adaptiveUpdate(int state);
     bool adaptiveStart(int state);
-    void adaptiveStop();
+    void adaptiveStop(bool updateTarget);
     int lineCalc(unsigned long currentTime, unsigned long timediff,int direction);
     int squareCalc(unsigned long currentTime, unsigned long timediff,int direction );
 
