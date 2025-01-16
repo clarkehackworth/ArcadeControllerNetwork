@@ -251,7 +251,7 @@ bool AnalogControllerObject::isPastSensitivityThreshold(int value){
 }
 
 int AnalogControllerObject::smooth(int state){
-  if(_smoothing<0){//if disabled just return value
+  if(_smoothing<=0){//if disabled just return value
     return state;
   }
   _total -= _readings[_readIndex];
@@ -353,9 +353,7 @@ int AnalogControllerObject::adaptiveUpdate(int state){
     updateValue=squareCalc(currentTime,timediff,direction);
 
   if(_adaptiveCalcMaxValue!=0 && updateValue >=_adaptiveCalcMaxValue){
-    _adaptiveRunning=false;
-    updateValue = _adaptiveCalcMaxValue;
-    _adaptiveCurrent=_adaptiveTarget;
+    adaptiveStop(true);
     return _adaptiveCurrent;
   }
     
@@ -449,6 +447,9 @@ String AnalogControllerObject::peformEmulateButton(int state){
 
 int AnalogControllerObject::calcDeadzone(int value){
   
+  if(_deadzone==-1)
+    return value;
+
   int _value = value;
   int deadzoneHigh = _deadzone;
   int deadzoneLow = 0;
@@ -609,11 +610,11 @@ void AnalogControllerObject::initialize(){
 
     //defaults for tackball
     if(_smoothing==-1)
-      _smoothing = 4; //higher is more smoothing, but more latency //old default 8
+      _smoothing = -1; //higher is more smoothing, but more latency //old default 8
     if(_sensitivity==-1)
       _sensitivity = 2; //higher is less sensitive //old default 3
     if(_deadzone==-1)
-      _deadzone = 1;//old default 8
+      _deadzone = -1;//old default 8
     if(_mouseModeTimeout<=0){//default configs
       _mouseModeTimeout = 20;
       _mouseMode=true;
@@ -626,7 +627,7 @@ void AnalogControllerObject::initialize(){
 
     if(_adaptiveType=="line"){
       if(_adaptiveCalcMaxValue==-999999)
-        _adaptiveCalcMaxValue=0;
+        _adaptiveCalcMaxValue=200;
       if(_adaptiveCalcMValue==-999999)
         _adaptiveCalcMValue=1;
       if(_adaptiveCalcNValue==-999999)
@@ -637,13 +638,13 @@ void AnalogControllerObject::initialize(){
     
     if(_adaptiveType=="squared"){
       if(_adaptiveCalcMaxValue==-999999)
-        _adaptiveCalcMaxValue=0;
+        _adaptiveCalcMaxValue=200;
       if(_adaptiveCalcMValue==-999999)
-        _adaptiveCalcMValue=2;
+        _adaptiveCalcMValue=1;
       if(_adaptiveCalcNValue==-999999)
         _adaptiveCalcNValue=1;
       if(_adaptiveCalcCValue==-999999)
-        _adaptiveCalcCValue=50;
+        _adaptiveCalcCValue=100;
     }
   }
   if(_smoothing>=1)
