@@ -38,6 +38,9 @@ class Config {
 
   private:
     
+    String getConfigFilename(); 
+
+    Logger* _logger;
 
     File configFile;
     Sd2Card card;

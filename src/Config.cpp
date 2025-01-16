@@ -14,13 +14,14 @@ Config::Config(){
 
 // returns empty string on success
 String Config::setup(Logger* logger, Controllers* controllers, I2CNetwork* i2c) {
+  _logger=logger;
 
   StaticJsonDocument<JSON_DOC_BUFFER_SIZE> doc; // 1024 should be fine for now, but for larger configs this may not work
   DeserializationError error;
 
   if (SD.begin(chipSelect)) {
     
-    configFile = SD.open("config.json", FILE_READ);
+    configFile = SD.open(getConfigFilename().c_str() , FILE_READ);
     if (configFile && configFile.available()) {
     
       //String data = configFile.readString();
@@ -351,6 +352,42 @@ String Config::setup(Logger* logger, Controllers* controllers, I2CNetwork* i2c) 
   return "";
 }
 
+String Config::getConfigFilename(){
+  String filename="";
+  File root  = SD.open("/");
+  while (true)
+  {
+    File entry =  root.openNextFile();
+    if (! entry)
+      break;
+    // _logger->log("Config File checking 1:"+String(entry.name()));
+    if(String(entry.name()).startsWith("ACN-config") && String(entry.name()).endsWith(".json")){
+      filename = String(entry.name());
+      entry.close();
+      break;
+    }
+    entry.close();
+  }
+
+  if(filename==""){
+    File root  = SD.open("/");
+    while (true)
+    {
+      File entry =  root.openNextFile();
+      if (! entry)
+        break;
+      // _logger->log("Config File checking 2:"+String(entry.name()));
+      if(String(entry.name())=="config.json"){
+        filename = String(entry.name());
+        entry.close();
+        break;
+      }
+      entry.close();
+    }  
+  }
+  _logger->log("Config File "+filename+" found");
+  return filename;
+}
 String Config::getNetworkName(){
   return networkName;
 }
