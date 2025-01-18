@@ -75,7 +75,7 @@ String I2CNetwork::setup(String networkName, int numberOfSlaves, int *configslav
     {
       informedSlaves[i] = false;
     }
-    informedSlavesTimeSince = (int *)malloc(_numberOfSlaves * sizeof(unsigned long));
+    informedSlavesTimeSince = (unsigned long *)malloc(_numberOfSlaves * sizeof(unsigned long));
     for (int i = 0; i < _numberOfSlaves; i++)
     {
 
@@ -158,6 +158,17 @@ String I2CNetwork::addToQueue(int address, int index, String action, int value)
   return "";
 }
 
+int I2CNetwork::getIndexFromSlaveName(int name)
+{
+  for (int i = 0; i < _numberOfSlaves; i++)
+  {
+    if (slaves[i] == name)
+      return i;
+  }
+  _logger->debug("I2CNetwork: error could not find index for name " + String(name));
+  return 0;
+}
+
 void I2CNetwork::performAction()
 {
 
@@ -189,7 +200,7 @@ void I2CNetwork::performAction()
           String result = _controllers->performActionByIndex(index, buttonlookup(actionid), state);
           if (result != "")
           { // error
-            _logger->log(result + " error using I2cNetwork");
+            _logger->error(result + " error using I2cNetwork");
             queueSlots[i] = false;
           }
           else
@@ -197,7 +208,7 @@ void I2CNetwork::performAction()
         }
         else
         {
-          _logger->log("I2CNetwork: Error item addressed for " + String(address) + " not processed " + String(action) + "-" + String(state));
+          _logger->error("I2CNetwork: Error item addressed for " + String(address) + " not processed " + String(action) + "-" + String(state));
           queueSlots[i] = false;
         }
       }
@@ -205,8 +216,8 @@ void I2CNetwork::performAction()
       {
         if (master)
         {
-          //_logger->debug("performAction: "+name()+" sending "+String(address)+"-"+String(index)+"-"+String(actionid)+"-"+String(state));
-          if (informedSlaves[i] || informedSlavesTimeSince[address] + TIME_TO_FORCE_SLAVE_INFORM > currentTime)
+          // _logger->debug("performAction: "+name()+" sending "+String(address)+"-"+String(index)+"-"+String(actionid)+"-"+String(state));
+          if (informedSlaves[i] || informedSlavesTimeSince[getIndexFromSlaveName(address)] + TIME_TO_FORCE_SLAVE_INFORM > currentTime)
           { // only try to communicate with slave if slave has informed in
             Wire.beginTransmission(queue[i][0]);
             Wire.write(address);
@@ -219,6 +230,7 @@ void I2CNetwork::performAction()
             Wire.write(highbyte);
             Wire.write(lowbyte);
             byte busStatus = Wire.endTransmission();
+
             // if(actionid!=255)
             //   _logger->debug("I2C raw message 1: "+String(address)+" "+String(index)+" "+String(actionid)+" "+String(state) +" -> "+String(doublebyte_to_binary(state)) +" ["+String(byte_to_binary(highbyte))+","+String(byte_to_binary(lowbyte))+"]");
             if (busStatus != 0x00)
@@ -234,18 +246,18 @@ void I2CNetwork::performAction()
                 Wire.begin();
                 transmissionError = 0;
                 transmissionErrorTime = currentTime;
-                informedSlaves[address] = false;
-                informedSlavesTimeSince[address] = currentTime;
+                informedSlaves[getIndexFromSlaveName(address)] = false;
+                informedSlavesTimeSince[getIndexFromSlaveName(address)] = currentTime;
 
                 queueSlots[i] = false; // drop packet if we haven't been able to send it in this amount of time
               }
             }
             else
             {
-              //_logger->debug("I2C sent message");
+              // _logger->debug("I2C sent message");
               queueSlots[i] = false;
-              informedSlavesTimeSince[address] = currentTime;
-              informedSlaves[address] = true;
+              informedSlavesTimeSince[getIndexFromSlaveName(address)] = currentTime;
+              informedSlaves[getIndexFromSlaveName(address)] = true;
             }
           }
         }
@@ -256,11 +268,13 @@ void I2CNetwork::performAction()
   // round robin of the slaves to see if there are any messages that need to be consumed / sent
   if (master)
   {
+    // delay(1000);
     for (int i = 0; i < _numberOfSlaves; i++)
     {
+
       if (informedSlaves[i] == false)
       {
-        _logger->log("I2CNetwork: checking for slave " + String(slaves[i]) + " status " + String(informedSlaves[i]) + " time " + String(informedSlavesTimeSince[i]) + " current time " + String(currentTime));
+        _logger->log("I2CNetwork: checking for slave " + String(slaves[i]) + " status " + String(informedSlaves[i]) + " inform time " + String(informedSlavesTimeSince[i]) + " current time " + String(currentTime));
       }
       if (informedSlaves[i] || informedSlavesTimeSince[i] + TIME_TO_FORCE_SLAVE_INFORM < currentTime)
       { // only try to communicate with slave if slave has informed in
@@ -269,6 +283,7 @@ void I2CNetwork::performAction()
         {
           // _logger->debug("I2CNetwork: requestFrom "+String(slaves[i]));
           // Serial.print("-");
+
           Wire.requestFrom(slaves[i], DATA_PACKET);
           // _logger->debug("I2CNetwork: asking slave "+String(slaves[i])+" from wire");
           String response = "";
@@ -296,7 +311,7 @@ void I2CNetwork::performAction()
 
             if (address == 0)
             { // message for Master
-              _logger->debug("I2C Message recieved for master from slave, " + String(address) + " " + String(index) + " " + String(actionid) + " " + String(state));
+              // _logger->debug("I2C Message recieved for master from slave, " + String(address) + " " + String(index) + " " + String(actionid) + " " + String(state));
 
               String result = _controllers->performActionByIndex(index, buttonlookup(actionid), state);
 
@@ -313,10 +328,12 @@ void I2CNetwork::performAction()
           }
           else
           {
+            // _logger->log("I2CNetwork: transmission error");
             // Bus fault or slave fault
             end = true;
 
             transmissionError += 1;
+
             if (transmissionError > ERROR_BUS_FAULTS_BEFORE_RESET && transmissionErrorTime + 5000 < currentTime)
             {
               _logger->log("I2CNetwork: Transmission Error 2 to slave " + String(slaves[i]) + ", resetting bus");
@@ -330,6 +347,7 @@ void I2CNetwork::performAction()
           }
         }
       }
+      // _logger->log("I2CNetwork: done checking for slave " + String(slaves[i]));
     }
   }
   // _logger->debug("I2CNetwork: end perform action");

@@ -31,6 +31,7 @@ class I2CNetwork{
     String processAction(int actionid, int value);
     const char* doublebyte_to_binary(int x);
     const char* byte_to_binary(int x);
+    int getIndexFromSlaveName(int name);
     
     bool enable;
     String _name;
