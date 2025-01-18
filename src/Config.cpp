@@ -38,8 +38,8 @@ String Config::setup(Logger* logger, Controllers* controllers, I2CNetwork* i2c) 
   // Test if parsing succeeds.
   if (error) {
     String errorMessage = "Error: deserializeJson failed, "+String(error.f_str());
-    if(String(error.f_str())=="InvalidInput")
-      errorMessage+=", check to make sure config.json file is valid.";
+    if(String(error.c_str())=="InvalidInput")
+      errorMessage+=", check to make sure json is valid.";
     return errorMessage;
   }
   
@@ -385,7 +385,10 @@ String Config::getConfigFilename(){
       entry.close();
     }  
   }
-  _logger->log("Config File "+filename+" found");
+  if(filename=="")
+    _logger->log("No config file found");
+  else
+    _logger->log("Config File "+filename+" found");
   return filename;
 }
 String Config::getNetworkName(){
