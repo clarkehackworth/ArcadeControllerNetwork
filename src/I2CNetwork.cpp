@@ -355,28 +355,33 @@ void I2CNetwork::performAction()
 
 void I2CNetwork::sendAction(String action, int value)
 { // modify to send profile config number to over network
-  if (action == "NextConfig")
-  {
-    for (int i = 0; i < _numberOfSlaves; i++)
+  if(master){
+    if (action == "NextConfig")
     {
-      addToQueue(slaves[i], 0, "ChangeConfig", value);
+      for (int i = 0; i < _numberOfSlaves; i++)
+      {
+        addToQueue(slaves[i], 0, "ChangeConfig", value);
+      }
     }
-  }
-  if (action == "PrevConfig")
-  {
-    for (int i = 0; i < _numberOfSlaves; i++)
+    if (action == "PrevConfig")
     {
-      addToQueue(slaves[i], 0, "ChangeConfig", value);
+      for (int i = 0; i < _numberOfSlaves; i++)
+      {
+        addToQueue(slaves[i], 0, "ChangeConfig", value);
+      }
     }
-  }
-  if (action == "Reset")
-  {
-    for (int i = 0; i < _numberOfSlaves; i++)
+    if (action == "Reset")
     {
-      addToQueue(slaves[i], 0, "Reset", -1);
+      for (int i = 0; i < _numberOfSlaves; i++)
+      {
+        addToQueue(slaves[i], 0, "Reset", -1);
+      }
     }
+    performAction();
+  }else{
+    _logger->log("I2CNetwork: change config "+String(value));
+    addToQueue(0, 0, "ChangeConfig", value);
   }
-  performAction();
 }
 
 String I2CNetwork::processAction(int actionid, int value)
@@ -386,6 +391,12 @@ String I2CNetwork::processAction(int actionid, int value)
     return action;
   if (action == "ChangeConfig")
   {
+    if(master){
+      for (int i = 0; i < _numberOfSlaves; i++)
+      {
+        addToQueue(slaves[i], 0, "ChangeConfig", value);
+      }
+    }
     _controllers->setConfig(value);
     return action;
   }
@@ -397,13 +408,15 @@ String I2CNetwork::processAction(int actionid, int value)
     {
       addToQueue(0, 0, "GetConfig", _name.toInt());
     }
+    return action;
   }
   if (action == "GetConfig")
   {
-    _logger->debug("IC2Network: recieved getconfig for " + String(value));
+    // _logger->debug("IC2Network: recieved getconfig for " + String(value));
     informedSlaves[value] = true;
 
     addToQueue(value, 0, "ChangeConfig", _controllers->getConfig());
+    return action;
   }
   return "";
 }
